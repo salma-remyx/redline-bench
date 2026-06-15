@@ -6,7 +6,8 @@ downloaded on demand. Resolution precedence:
 
     1. a local `./benchmark/` directory (e.g. a manual clone), then
     2. the `$REDLINEBENCH_BENCHMARK_DIR` environment variable, then
-    3. a HuggingFace snapshot download (cached by huggingface_hub).
+    3. a HuggingFace snapshot download, materialized as real files (not
+       blob symlinks — see `_download_from_hf`).
 
 The returned directory always has `tasks/` as a child.
 """
@@ -24,6 +25,16 @@ HF_REVISION = "main"
 
 _LOCAL_DIRNAME = "benchmark"
 _ENV_VAR = "REDLINEBENCH_BENCHMARK_DIR"
+
+
+def _hf_cache_dir() -> Path:
+    """Stable local directory for the materialized benchmark download.
+
+    Honors `$XDG_CACHE_HOME`, falling back to `~/.cache`.
+    """
+    base = os.environ.get("XDG_CACHE_HOME")
+    root = Path(base).expanduser() if base else Path.home() / ".cache"
+    return root / "redlinebench" / "RedlineBench"
 
 
 def get_benchmark_dir() -> Path:
@@ -63,9 +74,18 @@ def _download_from_hf() -> Path:
             f"${_ENV_VAR} at a local copy of the benchmark."
         ) from exc
 
+    # Download into a local directory of REAL files. HuggingFace's default
+    # cache layout returns a snapshot of symlinks into `blobs/`; Harbor copies
+    # each task's `tests/` tree into the verifier container, where those
+    # symlinks dangle and break the verifier (`/tests/test.sh: No such file or
+    # directory` → no reward written). Passing `local_dir` materializes
+    # regular files, which copy into the container intact.
+    local_dir = _hf_cache_dir()
+    local_dir.mkdir(parents=True, exist_ok=True)
     path = snapshot_download(
         repo_id=HF_REPO_ID,
         repo_type=HF_REPO_TYPE,
         revision=HF_REVISION,
+        local_dir=str(local_dir),
     )
     return Path(path)

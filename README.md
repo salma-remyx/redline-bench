@@ -90,7 +90,7 @@ The canonical copy lives at [`skills/contract-redliner/`](skills/contract-redlin
 
 The benchmark data is **not** in this repo — it is resolved automatically: a local `./benchmark/` dir if present, else `$REDLINEBENCH_BENCHMARK_DIR`, else downloaded from [`crosbylegal/RedlineBench`](https://huggingface.co/datasets/crosbylegal/RedlineBench).
 
-One command runs the whole pipeline (download tasks → Harbor agent run → assemble the 3-judge panel verdicts → score → report) and prints a delta table against the published numbers in [`docs/report/report_data.json`](docs/report/report_data.json):
+One command runs the whole pipeline (download tasks → Harbor agent run → assemble the 3-judge panel verdicts → score → report) and writes a `report_data.json` (pass `--baseline <report.json>` to also print a delta table against a prior run):
 
 ```bash
 # Full benchmark (all 140 tasks)
@@ -100,7 +100,7 @@ redlinebench-reproduce --agent claude-code --model anthropic/claude-opus-4-8 --n
 redlinebench-reproduce --agent claude-code --model anthropic/claude-opus-4-8 --task redline-s1-t1-g01a
 ```
 
-A full re-run is **non-deterministic** (agent sampling + LLM judges), so deltas vs. the published report are expected and informational — the benchmark's core finding is task difficulty (no reference model exceeds ~0.49), not an exact score. See [`docs/REPRODUCING.md`](docs/REPRODUCING.md) for the step-by-step pipeline, cloud parallelism (Daytona), and the scoring details in [`docs/REPORT-METRICS.md`](docs/REPORT-METRICS.md).
+A full re-run is **non-deterministic** (agent sampling + LLM judges), so run-to-run deltas are expected and informational — the benchmark's core finding is task difficulty (no reference model exceeds ~0.49), not an exact score. See [`docs/REPRODUCING.md`](docs/REPRODUCING.md) for the step-by-step pipeline, cloud parallelism (Daytona), and the scoring details in [`docs/REPORT-METRICS.md`](docs/REPORT-METRICS.md).
 
 Harbor supports many [agents](https://www.harborframework.com/docs/agents) — `codex`, `opencode`, or your own — any of which can drive RedlineBench.
 
@@ -114,7 +114,7 @@ Harbor supports many [agents](https://www.harborframework.com/docs/agents) — `
 
 **Benchmark level**: per-task scores are first **averaged within each input group**, then aggregated as the mean over groups — overall and broken out per turn, per side, and per scenario. **Judging** uses a 3-judge panel (`gpt-5.4-mini` + `claude-haiku-4-5` + `gemini-3.1-flash-lite`, intentionally outside the families of benchmarked models) with strict-majority vote per rubric. See [`docs/REPORT-METRICS.md`](docs/REPORT-METRICS.md) for the formulas.
 
-The published report (`docs/report/index.html`) covers GPT-5.5, Claude Opus 4.8, Gemini 3.5 Flash, and Claude Fable 5, all run through the same pipeline.
+The reference models run through this pipeline are GPT-5.5, Claude Opus 4.8, Gemini 3.5 Flash, and Claude Fable 5.
 
 ## Repo layout
 
@@ -123,7 +123,7 @@ src/             # flat Python modules: reproduce, report_metrics, aggregate, pa
                  #   build_report_html, runs_reader, panel_reader, docx_metrics, judging, dataset
 schemas/         # task / prediction / grade JSON schemas
 skills/          # the canonical contract-redliner skill
-docs/            # REPORT-METRICS.md, REPRODUCING.md, and the published report/
+docs/            # REPORT-METRICS.md and REPRODUCING.md
 benchmark/       # gitignored — the dataset, downloaded from HuggingFace at runtime
 ```
 

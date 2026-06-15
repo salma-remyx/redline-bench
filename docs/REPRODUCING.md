@@ -1,9 +1,9 @@
 # Reproducing the RedlineBench report
 
-The published leaderboard (`docs/report/index.html`,
-`docs/report/report_data.json`) is produced by running agents over the 140
-tasks, grading each with a 3-judge panel, and aggregating. This guide walks the
-pipeline and how `redlinebench-reproduce` automates it.
+The leaderboard is produced by running agents over the 140 tasks, grading each
+with a 3-judge panel, and aggregating into a `report_data.json` (and optional
+`index.html`). This guide walks the pipeline and how `redlinebench-reproduce`
+automates it.
 
 ## Prerequisites
 
@@ -44,7 +44,8 @@ This:
    (The verifier already runs the 3-judge panel inline, so there is no separate
    re-judging step.)
 4. **Scores + reports**: `report_metrics.run(...)` → `report_data.json`.
-5. **Compares** against `docs/report/report_data.json` and prints a delta table.
+5. **Optionally compares** against a baseline report passed via `--baseline`
+   and prints a delta table.
 
 Add `--html --logo assets/redlinebench-logo.svg` to also render `index.html`.
 
@@ -56,7 +57,7 @@ Add `--html --logo assets/redlinebench-logo.svg` to also render `index.html`.
 | `--env daytona` | Run on Daytona cloud sandboxes instead of local Docker. |
 | `--n-concurrent N` | Parallel trials. |
 | `--workdir DIR` | Where `jobs/` and `runs/` are written (default `reproduce_out/`). |
-| `--baseline PATH` | Report JSON to diff against (default the published one). |
+| `--baseline PATH` | Report JSON to diff against (omit to skip the comparison). |
 
 ## Why deltas are expected
 
