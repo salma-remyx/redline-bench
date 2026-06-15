@@ -250,7 +250,9 @@ def run(
     # Both produce rows with the same schema; `summarize_model`
     # downstream is source-agnostic.
     if judge_method == "panel":
-        trials = collect_panel_rows(runs_dir, include_fable_5=add_fable_5)
+        trials = collect_panel_rows(
+            runs_dir, include_fable_5=add_fable_5, benchmark_dir=benchmark_dir,
+        )
         if not trials:
             print(
                 f"ERROR: --judge-method=panel but no panel verdicts found at "

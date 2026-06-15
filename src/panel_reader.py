@@ -23,9 +23,18 @@ Data layout (already on disk):
 where `<judge>` is one of the 3 panel members, `<panel_model_name>` is
 the full model identifier (e.g. `claude-opus-4-8`, `gpt-5.5`,
 `gemini-3.5-flash`, `claude-fable-5`), and `<task>` matches the
-`redline-s{S}-t{T}-g{NN}{variant}` naming convention. Each file's
-`score.per_rubric` carries the judge's verdict + weight + category for
-every rubric on that task.
+`redline-s{S}-t{T}-g{NN}{variant}` naming convention.
+
+Two on-disk verdict shapes are supported:
+
+  * `score.per_rubric` — fully-aggregated rows (verdict + weight +
+    category + is_penalty), written by the post-hoc `panel.py` /
+    `rejudge.py`.
+  * `verdicts` — raw judge output (`{rubric_id, verdict, justification}`,
+    NO weights), written by the Harbor verifier's `judge.py` and copied
+    verbatim by `reproduce.assemble_runs`. Weights / category /
+    is_penalty are joined from the task's `rubrics.json` (requires
+    `benchmark_dir`).
 
 Per-rubric majority logic mirrors `panel.py::main`'s vote: PASS if
 `n_pass * 2 > len(votes)` (strict majority with an odd judge count).
@@ -47,6 +56,44 @@ from panel import majority_vote_per_rubric, weighted_score
 # Same regex `runs_reader._TASK_NAME_RE` uses — verdict filenames are
 # `<task>.json` so the stem matches the task name directly.
 _TASK_NAME_RE = re.compile(r"^redline-s(\d+)-t(\d+)-g(\d+)([a-z])$")
+
+# Per-task rubric metadata, cached by rubrics.json path so repeated
+# (model, task) lookups across models don't re-read the file.
+_RUBRIC_CACHE: dict[Path, dict[str, dict]] = {}
+
+
+def _load_task_rubrics(
+    benchmark_dir: Path | None, task: str,
+) -> dict[str, dict]:
+    """Map `rubric_id → {weight, category, is_penalty, criteria}` for a
+    task, read from `<benchmark>/tasks/<task>/tests/rubrics.json`.
+
+    Returns an empty dict when `benchmark_dir` is None or the file is
+    missing/unreadable — callers then fall back to the weights embedded
+    in `score.per_rubric` (the fully-aggregated format). `is_penalty` is
+    derived as `weight < 0`, matching the live verifier's `judge.py`.
+    """
+    if benchmark_dir is None:
+        return {}
+    path = Path(benchmark_dir) / "tasks" / task / "tests" / "rubrics.json"
+    cached = _RUBRIC_CACHE.get(path)
+    if cached is not None:
+        return cached
+    out: dict[str, dict] = {}
+    try:
+        data = json.loads(path.read_text())
+        for r in data.get("rubrics", []):
+            w = int(r["weight"])
+            out[r["id"]] = {
+                "weight": w,
+                "category": r.get("category"),
+                "is_penalty": w < 0,
+                "criteria": r.get("criteria"),
+            }
+    except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError):
+        out = {}
+    _RUBRIC_CACHE[path] = out
+    return out
 
 
 # Panel model directory names (under `panel/judges/<judge>/`) carry the
@@ -74,6 +121,7 @@ def collect_panel_rows(
     runs_dir: Path,
     *,
     include_fable_5: bool = False,
+    benchmark_dir: Path | None = None,
 ) -> list[dict]:
     """Walk `runs_dir/panel/judges/*/` and return rows in the same shape
     as `runs_reader.collect_from_runs_dir`, with per-rubric verdicts
@@ -142,30 +190,68 @@ def collect_panel_rows(
         # Also collect rubric-level metadata (is_penalty, criteria) on
         # the side, since those don't fit the (verdict, weight,
         # category) tuple but the report rows need them.
+        task_rubrics = _load_task_rubrics(benchmark_dir, task)
         rubric_meta: dict[str, dict] = {}
         rubric_sets: list[dict[str, tuple[str, int, str | None]]] = []
         for judge_name in judges:
             vd = votes[judge_name]
             judge_map: dict[str, tuple[str, int, str | None]] = {}
-            for p in vd.get("score", {}).get("per_rubric", []):
-                rid = p["rubric_id"]
-                judge_map[rid] = (
-                    p["verdict"],
-                    int(p["weight"]),
-                    p.get("category"),
-                )
-                if rid not in rubric_meta:
-                    rubric_meta[rid] = {
-                        "is_penalty": bool(p.get("is_penalty", False)),
-                        "category": p.get("category"),
-                        "criteria": p.get("criteria"),
-                    }
+            scored = vd.get("score", {}).get("per_rubric")
+            if scored:
+                # Fully-aggregated rows carry their own weight/category.
+                for p in scored:
+                    rid = p["rubric_id"]
+                    judge_map[rid] = (
+                        p["verdict"], int(p["weight"]), p.get("category"),
+                    )
+                    if rid not in rubric_meta:
+                        rubric_meta[rid] = {
+                            "is_penalty": bool(p.get("is_penalty", False)),
+                            "category": p.get("category"),
+                            "criteria": p.get("criteria"),
+                        }
+            else:
+                # Raw verifier verdicts: join weights from rubrics.json.
+                for p in vd.get("verdicts", []):
+                    rid = p.get("rubric_id")
+                    rdef = task_rubrics.get(rid)
+                    if rdef is None:
+                        continue
+                    judge_map[rid] = (
+                        p.get("verdict", "FAIL"), rdef["weight"], rdef["category"],
+                    )
             rubric_sets.append(judge_map)
+
+        # `rubrics.json` is the authoritative source of is_penalty /
+        # criteria and covers rubrics every judge omitted (still scored,
+        # as FAIL). Fold it in without clobbering metadata already taken
+        # from the aggregated `score.per_rubric` rows.
+        for rid, rdef in task_rubrics.items():
+            rubric_meta.setdefault(rid, {
+                "is_penalty": rdef["is_penalty"],
+                "category": rdef["category"],
+                "criteria": rdef["criteria"],
+            })
 
         # Strict-majority vote per rubric — shared helper with
         # `panel.main()` so the math is bit-identical to what the
-        # post-hoc panel CLI computes.
-        panel_verdicts, weights = majority_vote_per_rubric(rubric_sets)
+        # post-hoc panel CLI computes. Votes only among judges that
+        # actually graded each rubric.
+        panel_verdicts, vote_weights = majority_vote_per_rubric(rubric_sets)
+
+        # Score over the FULL rubric set when rubrics.json is available: a
+        # rubric no judge returned counts as FAIL and still contributes
+        # its (positive) weight to the denominator — matching the live
+        # verifier's `aggregate()`. With the aggregated `score.per_rubric`
+        # format every rubric is already present, so this is a no-op; the
+        # fallback preserves the prior voted-set behavior.
+        if task_rubrics:
+            weights = {rid: rdef["weight"] for rid, rdef in task_rubrics.items()}
+            panel_verdicts = {
+                rid: panel_verdicts.get(rid, "FAIL") for rid in task_rubrics
+            }
+        else:
+            weights = vote_weights
 
         # Rebuild the per_rubric list the report row carries downstream,
         # attaching the metadata `majority_vote_per_rubric` doesn't
