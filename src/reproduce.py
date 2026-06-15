@@ -10,7 +10,7 @@ hosted on HuggingFace (`crosbylegal/RedlineBench`):
        verifier already emits the 3-judge panel per trial, so no
        separate re-judging step is needed.
     4. Build `report_data.json` (and optionally `index.html`).
-    5. Print a delta table vs. the published `docs/report/report_data.json`.
+    5. If `--baseline` is given, print a delta table vs. that report.
 
 A full re-run is non-deterministic (agent sampling + LLM judges), so the
 comparison is informational — it is NOT an exact-match gate. Requires
@@ -42,7 +42,7 @@ from dataset import get_benchmark_dir
 _VERIFIER_JUDGES_SUBDIR = "verifier/judges"
 
 # Short trajectory-directory names, mirroring panel_reader's map so the
-# leaderboard labels stay consistent with the published report.
+# leaderboard labels stay consistent across runs.
 _MODEL_TO_TRAJ_DIR = {
     "gpt-5.5": "gpt55",
     "claude-opus-4-8": "opus48",
@@ -146,7 +146,7 @@ def _delta_table(regen_path: Path, baseline_path: Path) -> None:
     regen = {r["model"]: r for r in json.loads(regen_path.read_text())["leaderboard"]}
     base = {r["model"]: r for r in json.loads(baseline_path.read_text())["leaderboard"]}
     print()
-    print("Comparison vs published report (overall_turn_weighted):")
+    print("Comparison vs baseline (overall_turn_weighted):")
     print(f"  {'model':<20} {'reproduced':>12} {'published':>12} {'delta':>10}")
     for model in sorted(set(regen) | set(base)):
         r = regen.get(model, {}).get("overall_turn_weighted")
@@ -174,8 +174,9 @@ def main() -> int:
                     help="Where jobs/ and runs/ are written.")
     ap.add_argument("--out", default="report_data.json",
                     help="Regenerated report JSON path.")
-    ap.add_argument("--baseline", default="docs/report/report_data.json",
-                    help="Published report to compare against.")
+    ap.add_argument("--baseline", default=None,
+                    help="Optional report JSON to diff the regenerated "
+                         "numbers against; omit to skip the comparison.")
     ap.add_argument("--html", action="store_true",
                     help="Also render index.html (needs --logo).")
     ap.add_argument("--logo", default="assets/redlinebench-logo.svg")
@@ -226,7 +227,8 @@ def main() -> int:
                 check=True,
             )
 
-    _delta_table(Path(args.out), Path(args.baseline))
+    if args.baseline:
+        _delta_table(Path(args.out), Path(args.baseline))
     return 0
 
 
