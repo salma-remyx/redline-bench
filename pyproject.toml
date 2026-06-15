@@ -1,0 +1,52 @@
+[project]
+name = "redlinebench"
+version = "0.1.0"
+description = "RedlineBench: a benchmark for AI contract redlining — reproduction, aggregation, re-judging, and judge-panel scoring tools."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "litellm>=1.83",
+    # lxml is required by report_metrics' docx-driven metrics
+    # (surgicalness + verbosity) which read the per-trace redline.docx
+    # files directly.
+    "lxml>=5.0",
+    # huggingface_hub resolves/downloads the benchmark dataset
+    # (crosbylegal/RedlineBench) at runtime — see src/dataset.py.
+    "huggingface_hub>=0.24",
+]
+
+[project.optional-dependencies]
+# Optional extras for rendering annotated views locally. The Harbor task
+# verifier installs these in-container regardless.
+docx = [
+    "python-docx==1.2.0",
+    "docx-revisions>=0.1.5",
+]
+
+[project.scripts]
+redlinebench-aggregate = "aggregate:main"
+redlinebench-rejudge = "rejudge:main"
+redlinebench-panel = "panel:main"
+redlinebench-reproduce = "reproduce:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+# Flat layout: modules live directly under src/ (no nested package).
+[tool.setuptools]
+package-dir = { "" = "src" }
+py-modules = [
+    "aggregate",
+    "panel",
+    "rejudge",
+    "report_metrics",
+    "build_report_html",
+    "runs_reader",
+    "panel_reader",
+    "docx_metrics",
+    "judging",
+    "dataset",
+    "reproduce",
+]

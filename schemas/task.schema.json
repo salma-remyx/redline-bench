@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RedlineBench Task",
+  "description": "Logical contents of one RedlineBench task (mirrored in tests/rubrics.json).",
+  "type": "object",
+  "required": ["task_id", "scenario_id", "side", "level", "input_group",
+               "represented_party", "counterparty", "author", "rubrics"],
+  "properties": {
+    "task_id": {"type": "integer", "description": "Stable task identifier."},
+    "scenario_id": {"type": "integer", "enum": [1, 2, 3], "description": "Public scenario number."},
+    "scenario_label": {"type": "string"},
+    "side": {"type": "string", "enum": ["A", "B"], "description": "Represented side."},
+    "level": {"type": "integer", "minimum": 1, "maximum": 4, "description": "Negotiation turn."},
+    "input_group": {"type": "string",
+      "description": "s{scenario}-t{turn}-g{group}; tasks sharing this have identical model input."},
+    "variant": {"type": "string", "description": "Attorney rubric-set variant within the group (a, b, ...)."},
+    "represented_party": {"type": "string"},
+    "counterparty": {"type": "string"},
+    "author": {"type": "string",
+      "description": "Tracked-change author string the agent must use; grading keys on it."},
+    "rubrics": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "criteria", "category", "weight"],
+        "properties": {
+          "id": {"type": "string"},
+          "criteria": {"type": "string", "description": "The PASS/FAIL condition."},
+          "justification": {"type": "string", "description": "Attorney rationale; context only, not graded."},
+          "category": {"type": "string",
+            "description": "Rubric dimension, e.g. Legal correctness, Deal-closing Orientation."},
+          "weight": {"type": "integer", "minimum": -10, "maximum": 10,
+            "description": "Importance 1-10; negative = penalty rubric (an undesirable edit)."}
+        }
+      }
+    }
+  }
+}

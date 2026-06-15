@@ -1,0 +1,21 @@
+# Benchmark data — lives on HuggingFace (crosbylegal/RedlineBench),
+# downloaded at runtime. Never committed to this repo.
+benchmark/
+
+# Secrets & local environment
+.env
+.venv/
+
+# Run / build artifacts
+jobs/
+runs/
+reproduce_out/
+report_data.json
+index.html
+
+# Python / OS noise
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.DS_Store

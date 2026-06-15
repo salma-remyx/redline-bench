@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RedlineBench Grade",
+  "description": "Verifier output for one prediction (verifier/grade.json).",
+  "type": "object",
+  "required": ["task_id", "model", "gate", "score"],
+  "properties": {
+    "task_id": {"type": "integer"},
+    "scenario_id": {"type": "integer"},
+    "side": {"type": "string"},
+    "level": {"type": "integer"},
+    "model": {"type": "string"},
+    "judge_model": {"type": "string", "description": "LiteLLM model string of the judge."},
+    "gate": {
+      "type": "object", "required": ["passed"],
+      "properties": {
+        "passed": {"type": "boolean",
+          "description": "Loadable .docx with >=1 tracked change or comment by the author; else score 0."},
+        "reason": {"type": "string"}
+      }
+    },
+    "score": {
+      "type": "object", "required": ["weighted"],
+      "properties": {
+        "weighted": {"type": "number", "minimum": 0, "maximum": 1,
+          "description": "(earned_weight - penalty_weight) / total_positive_weight, clamped [0,1]."},
+        "earned_weight": {"type": "integer"},
+        "penalty_weight": {"type": "integer"},
+        "total_weight": {"type": "integer", "description": "Sum of positive rubric weights."},
+        "n_pass": {"type": "integer"},
+        "n_total": {"type": "integer"},
+        "per_rubric": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rubric_id": {"type": "string"},
+              "verdict": {"type": "string", "enum": ["PASS", "FAIL"]},
+              "weight": {"type": "integer"},
+              "is_penalty": {"type": "boolean"},
+              "category": {"type": "string"},
+              "criteria": {"type": "string"},
+              "justification": {"type": "string", "description": "One-sentence judge rationale."}
+            }
+          }
+        },
+        "redlines": {"type": "integer"},
+        "edit_operations": {"type": "integer"},
+        "total_revisions": {"type": "integer"},
+        "touched_paragraphs": {"type": "integer"},
+        "comments_added": {"type": "integer"},
+        "excess_redlines": {"type": "integer"},
+        "median_insertion_chars": {"type": "integer"}
+      }
+    }
+  }
+}

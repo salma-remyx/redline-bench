@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RedlineBench Prediction",
+  "description": "Metadata envelope a harness submits per task alongside the redlined .docx. The .docx itself is the primary artifact; this makes the submission attributable and reproducible.",
+  "type": "object",
+  "required": ["task_name", "model", "harness", "run_id", "output_docx"],
+  "properties": {
+    "task_name": {"type": "string", "description": "e.g. redline-s1-t1-g01a."},
+    "task_id": {"type": "integer"},
+    "model": {"type": "string", "description": "Evaluated model id, e.g. claude-opus-4-8."},
+    "harness": {"type": "string", "description": "Agent harness, e.g. claude-code / codex / opencode / custom."},
+    "run_id": {"type": "string", "description": "Unique id for this rollout (trial id)."},
+    "trial": {"type": "integer", "default": 1, "description": "1-indexed trial number for multi-trial runs."},
+    "output_docx": {"type": "string",
+      "description": "Path to the redlined .docx (the contract.docx edited in place)."},
+    "author": {"type": "string", "description": "Author string used in the tracked changes."},
+    "trace": {"type": ["string", "null"],
+      "description": "Optional path to the agent trajectory/transcript."},
+    "metadata": {"type": "object", "description": "Optional free-form (tokens, cost, duration, etc.)."}
+  }
+}
