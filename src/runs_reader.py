@@ -23,7 +23,7 @@ Auto-discovery means: drop a new model's traces into
 next run; no code changes needed.
 
 This module is the seam between the on-disk layout and the in-memory
-trial rows the rest of the report pipeline operates on. If the trace
+trial rows the rest of the metrics pipeline operates on. If the trace
 layout changes, only this file needs to change.
 """
 
@@ -47,7 +47,7 @@ _TASK_NAME_RE = re.compile(r"^redline-s(\d+)-t(\d+)-g(\d+)([a-z])$")
 # that's intentionally distinct from the actively-run models'
 # directories under `trajectories/` — the layout flags Fable 5 as
 # a reference run with a different on-disk shape. But that special
-# directory name is poor as a model identifier in the report
+# directory name is poor as a model identifier in the metrics summary
 # ("archival-fable5" doesn't read as a model). Map it here.
 _ARCHIVAL_DIR_TO_MODEL: dict[str, str] = {
     "archival-fable5": "claude-fable-5",

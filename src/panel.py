@@ -71,7 +71,7 @@ def weighted_score(verdicts: dict, weights: dict) -> float:
 
     Single source of truth for the weighted-score formula across:
       - `panel.main()` (post-hoc panel aggregation CLI)
-      - `panel_reader.collect_panel_rows()` (report pipeline reader)
+      - `panel_reader.collect_panel_rows()` (metrics pipeline reader)
       - `harbor/tasks/*/tests/judge.py` (live verifier; can't import,
         so it carries an inline mirror — keep in sync if either
         changes).
@@ -114,7 +114,7 @@ def majority_vote_per_rubric(
         weight, regardless of who graded).
 
     This is the same vote `panel.main()` runs inline, factored out so
-    both the post-hoc panel CLI and the report-side `panel_reader` use
+    both the post-hoc panel CLI and `panel_reader` use
     one implementation.
     """
     all_rids: set[str] = set().union(
