@@ -74,15 +74,6 @@ Agents edit the document through a bundled [skill](skills/contract-redliner/SKIL
 
 The canonical copy lives at [`skills/contract-redliner/`](skills/contract-redliner); it is also vendored into each task's `environment/skills/` so Harbor can build the task container.
 
-## Results
-
-The benchmark is hard: across the published reference run, no model clears the halfway mark on weighted turn-level pass rate. Full numbers are in the [report](https://intelligence.crosby.ai/benchmark).
-
-- **Overall turn-level performance**: GPT-5.5 **46.1%**, Claude Opus **42.3%**, Gemini **40.4%**.
-- **Turn 1 is hardest** (opening redlines from a clean template), and every model scores lower on the vendor (AgentCo) side than the customer side.
-- **Deal-closing orientation** is the strongest dimension for all models; **legal correctness** and **negotiation quality** are the weakest.
-- Agreement with attorneys' final contract positions tops out at **23.5%**; substantial headroom remains.
-
 ## Setup
 
 1. Install [Harbor](https://harborframework.com) and have Docker running:
