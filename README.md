@@ -136,15 +136,15 @@ Harbor supports many [agents](https://www.harborframework.com/docs/agents) (`cod
 
 **Benchmark level**: per-task scores are first **averaged within each input group**, then aggregated as the mean over groups, overall and broken out per turn, per side, and per scenario. **Judging** uses a 3-judge panel (`gpt-5.4-mini` + `claude-haiku-4-5` + `gemini-3.1-flash-lite`, intentionally outside the families of benchmarked models) with strict-majority vote per rubric.
 
-Every rubric criterion maps to one of five evaluation dimensions, weighted across the benchmark as:
+Every rubric criterion maps to one of five evaluation dimensions. Their share of all rubrics across the benchmark:
 
-| Dimension                          | Weight | What it penalizes                                                                                                          |
-| ---------------------------------- | -----: | ------------------------------------------------------------------------------------------------------------------------- |
-| Commercial context                 |  33.0% | Contradicts explicit business instructions (budget caps, go-live dates, deal-breakers); proposes fallbacks outside guardrails |
-| Legal correctness                  |  25.7% | Misstates the law; introduces unenforceable language; creates ambiguity or conflicts elsewhere in the contract            |
-| Negotiation quality                |  16.9% | Over- or under-aggressive for the leverage and stage; concedes key terms too easily; over-lawyers immaterial issues       |
-| Deal-closing orientation           |  13.6% | Optimizes for "winning" every term rather than closing; prolongs the markup with minor, low-impact edits                  |
-| Counterparty-acceptance prediction |  10.2% | Proposes obvious non-starters; fails to recognize already-favorable language; accepts extreme positions without justification |
+| Dimension                          | Share of rubrics | What it penalizes                                                                                            |
+| ---------------------------------- | ---------------: | ----------------------------------------------------------------------------------------------------------- |
+| Commercial context                 |            33.4% | Contradicts explicit business instructions (budget caps, go-live dates, deal-breakers); proposes fallbacks outside guardrails |
+| Legal correctness                  |            25.7% | Misstates the law; introduces unenforceable language; creates ambiguity or conflicts elsewhere in the contract            |
+| Negotiation quality                |            17.0% | Over- or under-aggressive for the leverage and stage; concedes key terms too easily; over-lawyers immaterial issues       |
+| Deal-closing orientation           |            13.7% | Optimizes for "winning" every term rather than closing; prolongs the markup with minor, low-impact edits                  |
+| Counterparty-acceptance prediction |            10.2% | Proposes obvious non-starters; fails to recognize already-favorable language; accepts extreme positions without justification |
 
 The reference models run through this pipeline are GPT-5.5, Claude Opus 4.8, Gemini 3.5 Flash, and Claude Fable 5.
 
