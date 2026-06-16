@@ -1,3 +1,5 @@
+<img width="1640" height="624" alt="image (3)" src="https://github.com/user-attachments/assets/7c160c89-a335-4f40-890a-b239c99a944a" />
+
 # RedlineBench
 
 RedlineBench evaluates whether AI agents can redline contracts in the format lawyers actually review: a Word `.docx` with native tracked changes and threaded comments.
