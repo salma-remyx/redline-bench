@@ -6,7 +6,7 @@ Concretely, it measures how well AI agents **redline contracts the way attorneys
 
 Each task drops the agent into a live contract negotiation: _you are in-house counsel for one party, at a specific turn of the negotiation; here is the contract as it stands, your playbook, and your commercial context. Produce your redline._
 
-- **Report** ([intelligence.crosby.ai/benchmark](https://intelligence.crosby.ai/benchmark)): the published findings and live leaderboard.
+- **Report** ([intelligence.crosby.ai/benchmark](https://intelligence.crosby.ai/benchmark)): the published findings and methodology.
 - **Code** (this repo, GitHub): the reproduction driver, scoring, judging, and metrics tooling.
 - **Data** ([`crosbylegal/RedlineBench`](https://huggingface.co/datasets/crosbylegal/RedlineBench) on HuggingFace): the 140 runnable tasks. **Not committed here**; it is downloaded on demand (see [Reproducing](#reproducing)).
 
@@ -76,7 +76,7 @@ The canonical copy lives at [`skills/contract-redliner/`](skills/contract-redlin
 
 ## Results
 
-The benchmark is hard: across the published reference run, no model clears the halfway mark on weighted turn-level pass rate. Full numbers and the live leaderboard are in the [report](https://intelligence.crosby.ai/benchmark).
+The benchmark is hard: across the published reference run, no model clears the halfway mark on weighted turn-level pass rate. Full numbers are in the [report](https://intelligence.crosby.ai/benchmark).
 
 - **Overall turn-level performance**: GPT-5.5 **46.1%**, Claude Opus **42.3%**, Gemini **40.4%**.
 - **Turn 1 is hardest** (opening redlines from a clean template), and every model scores lower on the vendor (AgentCo) side than the customer side.
@@ -122,7 +122,7 @@ redlinebench-reproduce --agent claude-code --model anthropic/claude-opus-4-8 --e
 redlinebench-reproduce --agent claude-code --model anthropic/claude-opus-4-8 --task redline-s1-t1-g01a
 ```
 
-A full re-run is **non-deterministic** (agent sampling + LLM judges), so run-to-run deltas are expected and informational; the benchmark's core finding is task difficulty (no reference model exceeds ~0.49), not an exact score. Cloud-parallel runs (e.g., Modal) are available via `--env`.
+A full re-run is **non-deterministic** (agent sampling + LLM judges), so run-to-run deltas are expected and informational; the benchmark's core finding is task difficulty, not an exact score. Cloud-parallel runs (e.g., Modal) are available via `--env`.
 
 Harbor supports many [agents](https://www.harborframework.com/docs/agents) (`codex`, `opencode`, or your own), any of which can drive RedlineBench.
 
