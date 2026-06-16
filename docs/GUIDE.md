@@ -4,7 +4,7 @@ This guide covers the practical path through RedlineBench: install the tooling,
 run a small task, reproduce a larger run, and understand the files the pipeline
 writes.
 
-For the benchmark structure, see [Benchmark Design](BENCHMARK-DESIGN.md). For
+For the benchmark structure, see [Benchmark Design](DESIGN.md). For
 scoring details, see [Evaluation](EVALUATION.md).
 
 ## Setup
