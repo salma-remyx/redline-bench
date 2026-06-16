@@ -1,5 +1,7 @@
-# RedlineBench
+<img width="1640" height="624" alt="image (3)" src="https://github.com/user-attachments/assets/7c160c89-a335-4f40-890a-b239c99a944a" />
 
+
+# RedlineBench
 A benchmark for measuring how well AI agents **redline contracts the way attorneys actually work**: by producing a real Word `.docx` with native tracked changes and threaded margin comments — the document an in-house lawyer would open in Word's Review pane — and grading it against attorney-authored rubrics with an LLM judge.
 
 Each task drops the agent into a live contract negotiation: _you are in-house counsel for one party, at a specific turn of the negotiation — here is the contract as it stands, your playbook, and your commercial context. Produce your redline._
