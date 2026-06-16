@@ -14,7 +14,7 @@ their substantive correctness:
     volume + clustering against the human expert's redline on the
     same source document. The expert touches many more paragraphs
     in many smaller doses; models touch fewer paragraphs in much
-    bigger doses. We also report the model's paragraph-overlap rate
+    bigger doses. We also include the model's paragraph-overlap rate
     against the expert (|model ∩ expert| / |model|) — at turn 1 the
     positional indices align because the input is the clean template.
 

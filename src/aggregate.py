@@ -139,11 +139,9 @@ def summarize_model(rows: list[dict]) -> dict:
     by_scenario_turn = _by_two_dim(rows, groups, "scenario", "turn")
     by_side_turn = _by_two_dim(rows, groups, "side", "turn")
 
-    # `overall_score_turn_weighted`: the 12-cell mean. This is the
-    # headline — scenario 2 (4 turn-2 groups) gets equal weight to
-    # scenarios 1 + 3 (5 turn-2 groups each) at every turn, and each
-    # turn contributes 25% regardless of how many groups it has. See
-    # `docs/REPORT-METRICS.md` for the formula in plain English.
+    # `overall_score_turn_weighted`: mean over scenario-turn cells.
+    # This gives each scenario/turn pair one vote regardless of how many
+    # input groups that cell contains.
     overall_score_turn_weighted = (
         round(mean(by_scenario_turn.values()), 4) if by_scenario_turn else None
     )
@@ -187,9 +185,8 @@ def summarize_model(rows: list[dict]) -> dict:
         "by_turn": by_turn,
         "by_scenario": by_dim("scenario"),
         "by_side": by_dim("side"),
-        # New turn-weighted breakdowns. Per the user spec, these are what
-        # the HTML report renders for "Score by side" and "Score by
-        # scenario".
+        # Turn-weighted breakdowns used by the metrics summary for
+        # side and scenario slices.
         "by_scenario_turn": by_scenario_turn,
         "by_side_turn": by_side_turn,
         "by_scenario_turn_weighted": by_scenario_turn_weighted,
@@ -219,7 +216,7 @@ def _by_two_dim(
     """Group-score means split by two row-level dimensions.
 
     Returns `{"<dim_a_value>-<dim_b_value>": mean_group_score, …}` — e.g.
-    for (scenario, turn) this is the 12-cell grid the report's headline
+    for (scenario, turn) this is the 12-cell grid the summary's headline
     metric averages over.
     """
     # Build {(dim_a_value, dim_b_value): set(input_group)} so we can

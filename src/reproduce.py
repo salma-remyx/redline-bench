@@ -1,16 +1,16 @@
-"""Reproduce the RedlineBench report end-to-end.
+"""Run RedlineBench and write aggregate metrics.
 
 `redlinebench-reproduce` runs the full pipeline against the benchmark
 hosted on HuggingFace (`crosbylegal/RedlineBench`):
 
     1. Resolve / download the benchmark (the `tasks/` tree).
     2. Run an agent over the tasks with Harbor  → a `jobs/<job>/` tree.
-    3. Assemble that job output into the `runs/<id>/` layout the report
+    3. Assemble that job output into the `runs/<id>/` layout the metrics
        pipeline expects (trajectories + panel verdicts). The Harbor
        verifier already emits the 3-judge panel per trial, so no
        separate re-judging step is needed.
-    4. Build `report_data.json` (and optionally `index.html`).
-    5. If `--baseline` is given, print a delta table vs. that report.
+    4. Build `metrics_summary.json`.
+    5. If `--baseline` is given, print a delta table vs. that summary.
 
 A full re-run is non-deterministic (agent sampling + LLM judges), so the
 comparison is informational — it is NOT an exact-match gate. Requires
@@ -30,10 +30,9 @@ import argparse
 import json
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
-import report_metrics
+import metrics_summary
 from dataset import get_benchmark_dir
 
 # Judge verdict files the Harbor verifier writes per trial, under
@@ -172,14 +171,11 @@ def main() -> int:
     ap.add_argument("--env", default=None, help="Harbor environment, e.g. modal.")
     ap.add_argument("--workdir", default="reproduce_out",
                     help="Where jobs/ and runs/ are written.")
-    ap.add_argument("--out", default="report_data.json",
-                    help="Regenerated report JSON path.")
+    ap.add_argument("--out", default="metrics_summary.json",
+                    help="Regenerated metrics summary JSON path.")
     ap.add_argument("--baseline", default=None,
-                    help="Optional report JSON to diff the regenerated "
+                    help="Optional metrics summary JSON to diff the regenerated "
                          "numbers against; omit to skip the comparison.")
-    ap.add_argument("--html", action="store_true",
-                    help="Also render index.html (needs --logo).")
-    ap.add_argument("--logo", default="assets/redlinebench-logo.svg")
     args = ap.parse_args()
 
     benchmark = get_benchmark_dir()
@@ -205,27 +201,15 @@ def main() -> int:
     n = assemble_runs(job_dir, runs_dir, model_id=model_id)
     print(f"assembled {n} trial(s) into {runs_dir}")
     if n == 0:
-        print("ERROR: no trials assembled — cannot build report.")
+        print("ERROR: no trials assembled — cannot build metrics summary.")
         return 1
 
-    rc = report_metrics.run(
+    rc = metrics_summary.run(
         runs=runs_dir, out=args.out, benchmark_dir=benchmark,
         judge_method="panel",
     )
     if rc != 0:
         return rc
-
-    if args.html:
-        logo = Path(args.logo)
-        if not logo.exists():
-            print(f"(no logo at {logo}; skipping --html)")
-        else:
-            subprocess.run(
-                [sys.executable, "-m", "build_report_html",
-                 "--data", args.out, "--logo", str(logo),
-                 "--out", str(workdir / "index.html")],
-                check=True,
-            )
 
     if args.baseline:
         _delta_table(Path(args.out), Path(args.baseline))

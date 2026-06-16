@@ -3,8 +3,7 @@
 python-docx 1.2 has native `Document.add_comment(runs, text, author)` for top-
 level comments — but it allocates IDs against existing `w:comment` IDs only,
 ignoring bookmark and revision IDs that share the same namespace. We wrap it
-to renumber the assigned ID against a full-document IdAllocator after the call,
-which is the only way to avoid the silent corruption documented in the
+to renumber the assigned ID against a full-document IdAllocator after the call, to avoid the silent corruption documented in the
 Anthropic docx skill issue #489.
 
 Replies are hand-rolled: python-docx has no reply API. We write the reply as a

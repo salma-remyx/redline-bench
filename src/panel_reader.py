@@ -1,6 +1,6 @@
-"""Judge-panel-driven rows for the report pipeline.
+"""Judge-panel-driven rows for the metrics pipeline.
 
-By default the report pipeline reads per-rubric verdicts from a single
+By default the metrics pipeline reads per-rubric verdicts from a single
 GPT-5.5 judge living under `runs/<run-id>/trajectories/<model>/<task>/grade.json`.
 That single-judge setup has a built-in conflict of interest — GPT-5.5
 is one of the four models being benchmarked, so it grades its own
@@ -186,10 +186,10 @@ def collect_panel_rows(
 
         # Collect per-judge rubric data into the shape
         # `panel.majority_vote_per_rubric` expects: a list of N maps
-        # (one per judge), each rubric_id → (verdict, weight, category).
+        # (one per judge), each rubric_id -> (verdict, weight, category).
         # Also collect rubric-level metadata (is_penalty, criteria) on
         # the side, since those don't fit the (verdict, weight,
-        # category) tuple but the report rows need them.
+        # category) tuple but the metrics rows need them.
         task_rubrics = _load_task_rubrics(benchmark_dir, task)
         rubric_meta: dict[str, dict] = {}
         rubric_sets: list[dict[str, tuple[str, int, str | None]]] = []
@@ -253,7 +253,7 @@ def collect_panel_rows(
         else:
             weights = vote_weights
 
-        # Rebuild the per_rubric list the report row carries downstream,
+        # Rebuild the per_rubric list the metrics row carries downstream,
         # attaching the metadata `majority_vote_per_rubric` doesn't
         # propagate (is_penalty, criteria text).
         majority_per_rubric: list[dict] = []

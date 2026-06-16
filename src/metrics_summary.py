@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Compute the public report's metrics into a single `report_data.json`.
+"""Compute aggregate RedlineBench metrics into one JSON summary.
 
-This script is the seam between the on-disk run layout and the HTML
-report. It reads graded trials directly from a `runs/<run-id>/`
+This script reads graded trials directly from a `runs/<run-id>/`
 directory (auto-discovering models under `trajectories/*/`) and emits
-the focused set of metrics the report renders:
+the benchmark-level metrics derived from those raw grade artifacts:
 
   1. Overall score (turn-weighted, 12-cell average)
   2. Score by side (turn-weighted)
@@ -23,27 +22,15 @@ Models are auto-discovered: any directory under
 and the model's identity comes from `grade.json::model` (not the
 directory name). Adding a new model = drop its traces and re-run.
 
-Claude Fable 5 ran through the same Harbor pipeline as the other
-models — its rubric grades come from the same judge panel and are
-directly comparable on the leaderboard. The `.docx` outputs from
-its Harbor run were not preserved, so the behavioral metrics use
-docx files borrowed from an earlier experiment on the same
-benchmark. Those traces live at
-`runs/<run-id>/archival-fable5/<task>/` with the borrowed docx at
-`<task>/old_experiment_run/redline.docx`. Pass `--add-fable-5` to
-include Fable 5.
-
-See `docs/REPORT-METRICS.md` for formulas and a worked example.
-
 Usage:
-    python -m report_metrics \\
+    python -m metrics_summary \\
         --runs runs/ref1-trial1 \\
-        --out report/report_data.json
+        --out metrics_summary.json
 
-    python -m report_metrics \\
+    python -m metrics_summary \\
         --runs runs/ref1-trial1 \\
         --add-fable-5 \\
-        --out report/report_data.json
+        --out metrics_summary.json
 """
 
 from __future__ import annotations
@@ -105,7 +92,7 @@ def _model_seed(name: str) -> int:
 
 
 def build_leaderboard(by_model: dict[str, list[dict]]) -> list[dict]:
-    """Per-model summary rows in the shape the HTML report consumes.
+    """Per-model summary rows for the metrics summary.
 
     Returns a list sorted descending by `overall_turn_weighted`. Each
     row carries:
@@ -218,14 +205,14 @@ def _build_docx_metrics(
 
 def run(
     runs: str | Path,
-    out: str | Path = "report_data.json",
+    out: str | Path = "metrics_summary.json",
     *,
     benchmark_dir: str | Path | None = None,
     add_fable_5: bool = False,
     judge_method: str = "panel",
     surgicalness_threshold: float = 0.30,
 ) -> int:
-    """Build the report JSON from a runs/<run-id>/ directory.
+    """Build the metrics summary JSON from a runs/<run-id>/ directory.
 
     `benchmark_dir` is the resolved benchmark root (containing `tasks/`),
     used only for the docx-driven expert baseline. If None, it is
@@ -338,12 +325,12 @@ def main() -> int:
             "Include Claude Fable 5 (reference model from an earlier "
             "benchmark run) from runs/<run-id>/archival-fable5/. Off by "
             "default because Fable 5 traces have a different layout "
-            "from the active models. See docs/REPORT-METRICS.md §4."
+            "from the active models."
         ),
     )
     ap.add_argument(
-        "--out", default="report_data.json",
-        help="Output path for the report JSON.",
+        "--out", default="metrics_summary.json",
+        help="Output path for the metrics summary JSON.",
     )
     ap.add_argument(
         "--surgicalness-threshold", type=float, default=0.30,

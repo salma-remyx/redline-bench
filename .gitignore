@@ -10,8 +10,7 @@ benchmark/
 jobs/
 runs/
 reproduce_out/
-report_data.json
-index.html
+metrics_summary.json
 
 # Python / OS noise
 __pycache__/

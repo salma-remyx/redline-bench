@@ -16,8 +16,7 @@ HEAVY = [
     "docx_metrics",
     "judging",
     "panel_reader",
-    "report_metrics",
-    "build_report_html",
+    "metrics_summary",
     "rejudge",
     "reproduce",
 ]
