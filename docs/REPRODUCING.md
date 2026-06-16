@@ -8,7 +8,7 @@ automates it.
 ## Prerequisites
 
 - `pip install -e .` (this package) and `uv tool install harbor`.
-- Docker running locally, **or** a Daytona account for cloud parallelism.
+- Docker running locally, **or** a Modal account for cloud parallelism.
 - API keys in `.env` (see `.env.template`): Anthropic + OpenAI + Gemini are all
   required because the verifier's 3-judge panel spans all three families.
 
@@ -29,6 +29,17 @@ The resolved root always contains `tasks/`.
 redlinebench-reproduce \
     --agent claude-code \
     --model anthropic/claude-opus-4-8 \
+    --n-concurrent 8
+```
+
+To run the same benchmark on Modal cloud sandboxes, pass Harbor's Modal
+environment:
+
+```bash
+redlinebench-reproduce \
+    --agent claude-code \
+    --model anthropic/claude-opus-4-8 \
+    --env modal \
     --n-concurrent 8
 ```
 
@@ -54,7 +65,7 @@ Add `--html --logo assets/redlinebench-logo.svg` to also render `index.html`.
 | Flag | Effect |
 |---|---|
 | `--task redline-s1-t1-g01a` | Run a single task (smoke test) instead of all 140. |
-| `--env daytona` | Run on Daytona cloud sandboxes instead of local Docker. |
+| `--env modal` | Run on Modal cloud sandboxes instead of local Docker. |
 | `--n-concurrent N` | Parallel trials. |
 | `--workdir DIR` | Where `jobs/` and `runs/` are written (default `reproduce_out/`). |
 | `--baseline PATH` | Report JSON to diff against (omit to skip the comparison). |

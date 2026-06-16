@@ -2,7 +2,7 @@
 
 A benchmark for measuring how well AI agents **redline contracts the way attorneys actually work**: by producing a real Word `.docx` with native tracked changes and threaded margin comments — the document an in-house lawyer would open in Word's Review pane — and grading it against attorney-authored rubrics with an LLM judge.
 
-Each task drops the agent into a live contract negotiation: *you are in-house counsel for one party, at a specific turn of the negotiation — here is the contract as it stands, your playbook, and your commercial context. Produce your redline.*
+Each task drops the agent into a live contract negotiation: _you are in-house counsel for one party, at a specific turn of the negotiation — here is the contract as it stands, your playbook, and your commercial context. Produce your redline._
 
 - **Code** (this repo, GitHub): the reproduction driver, scoring, judging, and report tooling.
 - **Data** ([`crosbylegal/RedlineBench`](https://huggingface.co/datasets/crosbylegal/RedlineBench) on HuggingFace): the 140 runnable tasks. **Not committed here** — it is downloaded on demand (see [Reproducing](#reproducing)).
@@ -18,11 +18,11 @@ Each task drops the agent into a live contract negotiation: *you are in-house co
 
 **140 tasks across 3 scenarios**, each scenario a complete multi-turn negotiation between a vendor (AgentCo, an AI hiring-platform company) and an enterprise customer:
 
-| Scenario | Deal | Tasks |
-|---|---|---|
-| 1 | Vendor-led SaaS MSA — AgentCo marks up LargeCo's template first | 50 |
-| 2 | Customer-led SaaS MSA — LargeCo writes the first markup | 40 |
-| 3 | Professional-services MSA — AgentCo on GiantCo's procurement-heavy template | 50 |
+| Scenario | Deal                                                                        | Tasks |
+| -------- | --------------------------------------------------------------------------- | ----- |
+| 1        | Vendor-led SaaS MSA — AgentCo marks up LargeCo's template first             | 50    |
+| 2        | Customer-led SaaS MSA — LargeCo writes the first markup                     | 40    |
+| 3        | Professional-services MSA — AgentCo on GiantCo's procurement-heavy template | 50    |
 
 Tasks span **4 negotiation turns**. Turn 1 is a clean-template first markup; turns 2–4 are response turns where the document arrives carrying the negotiation so far (real tracked changes and comment threads from prior turns), and the agent must classify and respond to every existing edit.
 
@@ -54,12 +54,12 @@ The golden `attorney_redlines.docx` lives under `tests/` (the verifier side, nev
 
 Agents edit the document through a bundled [skill](skills/contract-redliner/SKILL.md) — four self-contained Python scripts:
 
-| Script | Purpose |
-|---|---|
-| `read_document.py` | Render the contract as Markdown with stable paragraph IDs + an appendix of every existing comment and tracked change |
+| Script             | Purpose                                                                                                                     |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `read_document.py` | Render the contract as Markdown with stable paragraph IDs + an appendix of every existing comment and tracked change        |
 | `propose_edits.py` | Apply a batch of tracked changes (replace / delete / insert_after) anchored to verbatim text, each with a rationale comment |
-| `add_comment.py` | Standalone comment threads and threaded replies |
-| `mark_reserved.py` | Whole-section removal that preserves downstream numbering |
+| `add_comment.py`   | Standalone comment threads and threaded replies                                                                             |
+| `mark_reserved.py` | Whole-section removal that preserves downstream numbering                                                                   |
 
 The canonical copy lives at [`skills/contract-redliner/`](skills/contract-redliner); it is also vendored into each task's `environment/skills/` so Harbor can build the task container.
 
@@ -79,12 +79,11 @@ The canonical copy lives at [`skills/contract-redliner/`](skills/contract-redlin
 
 3. API keys — copy `.env.template` to `.env` and fill in your own:
 
-   | Variable | Used for |
-   |---|---|
-   | `OPENAI_API_KEY` | OpenAI panel judge (gpt-5.4-mini) and codex agents |
-   | `ANTHROPIC_API_KEY` | Anthropic panel judge (claude-haiku-4-5) and claude-code agents |
+   | Variable                                          | Used for                                                            |
+   | ------------------------------------------------- | ------------------------------------------------------------------- |
+   | `OPENAI_API_KEY`                                  | OpenAI panel judge (gpt-5.4-mini) and codex agents                  |
+   | `ANTHROPIC_API_KEY`                               | Anthropic panel judge (claude-haiku-4-5) and claude-code agents     |
    | `GEMINI_API_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY` | Gemini panel judge (gemini-3.1-flash-lite) + Gemini/opencode agents |
-   | `DAYTONA_API_KEY` | optional; cloud-parallel Harbor runs (`--env daytona`) |
 
 ## Reproducing
 
@@ -96,11 +95,14 @@ One command runs the whole pipeline (download tasks → Harbor agent run → ass
 # Full benchmark (all 140 tasks)
 redlinebench-reproduce --agent claude-code --model anthropic/claude-opus-4-8 --n-concurrent 8
 
+# Cloud-parallel run on Modal
+redlinebench-reproduce --agent claude-code --model anthropic/claude-opus-4-8 --env modal --n-concurrent 8
+
 # One-task smoke test
 redlinebench-reproduce --agent claude-code --model anthropic/claude-opus-4-8 --task redline-s1-t1-g01a
 ```
 
-A full re-run is **non-deterministic** (agent sampling + LLM judges), so run-to-run deltas are expected and informational — the benchmark's core finding is task difficulty (no reference model exceeds ~0.49), not an exact score. See [`docs/REPRODUCING.md`](docs/REPRODUCING.md) for the step-by-step pipeline, cloud parallelism (Daytona), and the scoring details in [`docs/REPORT-METRICS.md`](docs/REPORT-METRICS.md).
+A full re-run is **non-deterministic** (agent sampling + LLM judges), so run-to-run deltas are expected and informational — the benchmark's core finding is task difficulty (no reference model exceeds ~0.49), not an exact score. See [`docs/REPRODUCING.md`](docs/REPRODUCING.md) for the step-by-step pipeline, cloud parallelism (e.g., Modal), and the scoring details in [`docs/REPORT-METRICS.md`](docs/REPORT-METRICS.md).
 
 Harbor supports many [agents](https://www.harborframework.com/docs/agents) — `codex`, `opencode`, or your own — any of which can drive RedlineBench.
 
@@ -108,7 +110,7 @@ Harbor supports many [agents](https://www.harborframework.com/docs/agents) — `
 
 **Per task** the verifier:
 
-1. **Validity gate** — the output must be a loadable `.docx` containing at least one tracked change *or* comment attributed to the task's author string. Gate failure → reward 0.
+1. **Validity gate** — the output must be a loadable `.docx` containing at least one tracked change _or_ comment attributed to the task's author string. Gate failure → reward 0.
 2. **LLM judge** — the redline is rendered to an inline-annotated view (`~~deletions~~`, `++insertions++`, `{cmt-N}` with a comment appendix) and graded PASS/FAIL against each rubric. Rubrics are weighted 1–10; a small number carry **negative weights** (penalties — edits the attorney flagged as undesirable).
 3. **Score** — `reward = clamp(Σ earned − Σ penalties, 0, Σ positive weights) / Σ positive weights` ∈ [0, 1].
 

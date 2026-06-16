@@ -14,7 +14,7 @@ hosted on HuggingFace (`crosbylegal/RedlineBench`):
 
 A full re-run is non-deterministic (agent sampling + LLM judges), so the
 comparison is informational — it is NOT an exact-match gate. Requires
-the relevant API keys and a Harbor environment (local Docker or Daytona).
+the relevant API keys and a Harbor environment (local Docker or Modal).
 
 Example:
     redlinebench-reproduce --agent claude-code \\
@@ -73,7 +73,7 @@ def run_harbor(
     if shutil.which("harbor") is None:
         raise RuntimeError(
             "`harbor` CLI not found on PATH. Install it with "
-            "`uv tool install harbor` and ensure Docker (or Daytona) is "
+            "`uv tool install harbor` and ensure Docker (or Modal) is "
             "available. See https://harborframework.com"
         )
     jobs_dir.mkdir(parents=True, exist_ok=True)
@@ -169,7 +169,7 @@ def main() -> int:
     ap.add_argument("--task", default=None,
                     help="Run a single task (e.g. redline-s1-t1-g01a) instead of all 140.")
     ap.add_argument("--n-concurrent", type=int, default=8)
-    ap.add_argument("--env", default=None, help="Harbor environment, e.g. daytona.")
+    ap.add_argument("--env", default=None, help="Harbor environment, e.g. modal.")
     ap.add_argument("--workdir", default="reproduce_out",
                     help="Where jobs/ and runs/ are written.")
     ap.add_argument("--out", default="report_data.json",
