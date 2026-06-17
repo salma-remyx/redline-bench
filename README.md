@@ -2,7 +2,7 @@
 
 ## Abstract
 
-The **Crosby–micro1 Contract Redlining Benchmark** measures contract negotiation as a sequence of judgment calls rather than a collection of isolated clause edits. It captures multi-turn redlining workflows through simulations grounded in realistic SaaS transactions and attorney-generated explanations of key redline decisions, and evaluates models across five dimensions: legal correctness, commercial alignment, negotiation quality, counterparty-acceptance prediction, and deal-closing orientation.
+**Crosby–micro1 RedlineBench** measures contract negotiation as a sequence of judgment calls rather than a collection of isolated clause edits. It captures multi-turn redlining workflows through simulations grounded in realistic SaaS transactions and attorney-generated explanations of key redline decisions, and evaluates models across five dimensions: legal correctness, commercial alignment, negotiation quality, counterparty-acceptance prediction, and deal-closing orientation.
 
 Concretely, it measures how well AI agents **redline contracts the way attorneys actually work**: by producing a real Word `.docx` with native tracked changes and threaded margin comments (the document an in-house lawyer would open in Word's Review pane) and grading it against attorney-authored rubrics with an LLM judge.
 
