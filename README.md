@@ -97,6 +97,7 @@ The canonical copy lives at [`skills/contract-redliner/`](skills/contract-redlin
    | `OPENAI_API_KEY`                                  | OpenAI panel judge (gpt-5.4-mini) and codex agents                  |
    | `ANTHROPIC_API_KEY`                               | Anthropic panel judge (claude-haiku-4-5) and claude-code agents     |
    | `GEMINI_API_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY` | Gemini panel judge (gemini-3.1-flash-lite) + Gemini/opencode agents |
+   | `OPENROUTER_API_KEY`                              | OpenRouter-backed opencode agents                                   |
 
 ## Reproducing
 
@@ -110,6 +111,16 @@ redlinebench-reproduce --agent claude-code --model anthropic/claude-opus-4-8 --n
 
 # Cloud-parallel run on Modal
 redlinebench-reproduce --agent claude-code --model anthropic/claude-opus-4-8 --env modal --n-concurrent 8
+
+# OpenRouter-backed opencode GLM 5.2 run on Modal
+redlinebench-reproduce \
+  --agent opencode \
+  --model openrouter/z-ai/glm-5.2 \
+  --env modal \
+  --n-concurrent 70 \
+  --workdir reproduce_out_openrouter_glm52 \
+  --out metrics_summary_openrouter_glm52.json \
+  --agent-env "OPENROUTER_API_KEY=$OPENROUTER_API_KEY"
 
 # One-task smoke test
 redlinebench-reproduce --agent claude-code --model anthropic/claude-opus-4-8 --task redline-s1-t1-g01a

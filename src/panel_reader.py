@@ -171,6 +171,7 @@ def collect_panel_rows(
                     continue
 
     rows: list[dict] = []
+    seen_model_tasks: set[tuple[str, str]] = set()
     for (panel_model, task), votes in by_model_task.items():
         if len(votes) < len(judges):
             # Mirror panel.py's `common = set.intersection(...)`: only
@@ -338,5 +339,76 @@ def collect_panel_rows(
             "trial": 1,
             "_per_rubric": majority_per_rubric,
         })
+        seen_model_tasks.add((panel_model, task))
+
+    # Gate failures are not judgeable and therefore do not always produce
+    # panel verdict files. They still count as completed zero-score trials.
+    # Add them from the trajectory grade.json so panel summaries do not drop
+    # validity failures from the denominator.
+    for panel_model, (_, model_dir) in {
+        panel_model: _PANEL_MODEL_TO_TRAJECTORY.get(
+            panel_model, (panel_model, panel_model),
+        )
+        for panel_model, _ in by_model_task
+    }.items():
+        if panel_model == "claude-fable-5":
+            trace_root = runs_dir / "archival-fable5"
+        else:
+            trace_root = runs_dir / "trajectories" / model_dir
+        if not trace_root.is_dir():
+            continue
+        model_id, model_dir = _PANEL_MODEL_TO_TRAJECTORY.get(
+            panel_model, (panel_model, model_dir),
+        )
+        for task_dir in sorted(p for p in trace_root.iterdir() if p.is_dir()):
+            task = task_dir.name
+            if (panel_model, task) in seen_model_tasks:
+                continue
+            m = _TASK_NAME_RE.match(task)
+            if not m:
+                continue
+            grade_path = task_dir / "grade.json"
+            if not grade_path.exists():
+                continue
+            try:
+                grade = json.loads(grade_path.read_text())
+            except (json.JSONDecodeError, OSError):
+                continue
+            if bool(grade.get("gate", {}).get("passed", True)):
+                continue
+
+            sid, turn, group, variant = m.groups()
+            task_rubrics = _load_task_rubrics(benchmark_dir, task)
+            majority_per_rubric = [
+                {
+                    "rubric_id": rid,
+                    "verdict": "FAIL",
+                    "weight": rdef["weight"],
+                    "is_penalty": rdef["is_penalty"],
+                    "category": rdef["category"],
+                    "criteria": rdef["criteria"],
+                }
+                for rid, rdef in task_rubrics.items()
+            ]
+            tscore = grade.get("score", {}) or {}
+            rows.append({
+                "model": model_id,
+                "task": task,
+                "task_id": grade.get("task_id"),
+                "scenario": int(sid),
+                "turn": int(turn),
+                "side": grade.get("side"),
+                "input_group": f"s{sid}-t{turn}-g{group}",
+                "variant": variant,
+                "reward": 0.0,
+                "gate_passed": False,
+                "n_pass": 0,
+                "n_total": len(majority_per_rubric),
+                "n_penalties_triggered": 0,
+                **{k: tscore.get(k) for k in DIAG_KEYS},
+                "model_dir": model_dir,
+                "trial": 1,
+                "_per_rubric": majority_per_rubric,
+            })
 
     return rows
