@@ -109,6 +109,7 @@ The canonical copy lives at `[skills/contract-redliner/](skills/contract-redline
   | `ANTHROPIC_API_KEY`                               | Anthropic panel judge (claude-haiku-4-5) and claude-code agents     |
   | `GEMINI_API_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY` | Gemini panel judge (gemini-3.1-flash-lite) + Gemini/opencode agents |
   | `OPENROUTER_API_KEY`                              | OpenRouter-backed opencode agents                                   |
+  | `MODAL_KIMI_AUTO_ENDPOINT_BASE_URL` / `MODAL_QWEN_AUTO_ENDPOINT_BASE_URL` / `MODAL_PROXY_TOKEN_ID` / `MODAL_PROXY_TOKEN_SECRET` | Open models served by Modal Auto Endpoints through opencode |
 
 
 ## Reproducing
@@ -134,13 +135,43 @@ redlinebench-reproduce \
   --out metrics_summary_openrouter_glm52.json \
   --agent-env "OPENROUTER_API_KEY=$OPENROUTER_API_KEY"
 
+# Modal Auto Endpoint-backed opencode smoke tests.
+# Create the endpoint(s) first, then set the matching *_BASE_URL env var
+# to the endpoint's /v1 URL. Endpoints use Modal proxy auth, so also set
+# MODAL_PROXY_TOKEN_ID and MODAL_PROXY_TOKEN_SECRET in .env.
+#   modal endpoint create --env lab --name redline-kimi-auth --model nvidia/Kimi-K2.6-NVFP4
+#   modal endpoint create --env lab --name redline-qwen-auth --model Qwen/Qwen3.6-27B-FP8
+redlinebench-reproduce \
+  --agent opencode \
+  --model modal-kimi/nvidia/Kimi-K2.6-NVFP4 \
+  --env modal \
+  --n-concurrent 1 \
+  --task redline-s1-t1-g01a \
+  --workdir reproduce_out_modal_kimi_smoke \
+  --out metrics_summary_modal_kimi_smoke.json \
+  --agent-env "MODAL_KIMI_AUTO_ENDPOINT_BASE_URL=$MODAL_KIMI_AUTO_ENDPOINT_BASE_URL" \
+  --agent-env "MODAL_PROXY_TOKEN_ID=$MODAL_PROXY_TOKEN_ID" \
+  --agent-env "MODAL_PROXY_TOKEN_SECRET=$MODAL_PROXY_TOKEN_SECRET"
+
+redlinebench-reproduce \
+  --agent opencode \
+  --model modal-qwen/Qwen/Qwen3.6-27B-FP8 \
+  --env modal \
+  --n-concurrent 1 \
+  --task redline-s1-t1-g01a \
+  --workdir reproduce_out_modal_qwen_smoke \
+  --out metrics_summary_modal_qwen_smoke.json \
+  --agent-env "MODAL_QWEN_AUTO_ENDPOINT_BASE_URL=$MODAL_QWEN_AUTO_ENDPOINT_BASE_URL" \
+  --agent-env "MODAL_PROXY_TOKEN_ID=$MODAL_PROXY_TOKEN_ID" \
+  --agent-env "MODAL_PROXY_TOKEN_SECRET=$MODAL_PROXY_TOKEN_SECRET"
+
 # One-task smoke test
 redlinebench-reproduce --agent claude-code --model anthropic/claude-opus-4-8 --task redline-s1-t1-g01a
 ```
 
 A full re-run is **non-deterministic** (agent sampling + LLM judges), so run-to-run deltas are expected and informational; the benchmark's core finding is task difficulty, not an exact score. Cloud-parallel runs (e.g., Modal) are available via `--env`.
 
-Harbor supports many [agents](https://www.harborframework.com/docs/agents) (`codex`, `opencode`, or your own), any of which can drive RedlineBench.
+Harbor supports many [agents](https://www.harborframework.com/docs/agents) (`codex`, `opencode`, or your own), any of which can drive RedlineBench. The checked-in `opencode.json` defines OpenAI-compatible providers for Modal Auto Endpoints: `modal-kimi` and `modal-qwen`.
 
 ## Metrics
 

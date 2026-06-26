@@ -64,6 +64,42 @@ def _traj_dir_for(model_id: str) -> str:
     return _MODEL_TO_TRAJ_DIR.get(model_id, model_id)
 
 
+def _opencode_config_override(agent: str, model: str) -> str | None:
+    """Return a Harbor agent-kwarg value for project-defined OpenCode providers."""
+    if agent != "opencode" or "/" not in model:
+        return None
+
+    provider, _ = model.split("/", 1)
+    config_path = Path(__file__).resolve().parents[1] / "opencode.json"
+    if not config_path.exists():
+        return None
+
+    try:
+        config = json.loads(config_path.read_text())
+    except json.JSONDecodeError:
+        return None
+
+    provider_config = (config.get("provider") or {}).get(provider)
+    if not provider_config:
+        return None
+
+    return json.dumps({"provider": {provider: provider_config}}, separators=(",", ":"))
+
+
+def _redacted_cmd(cmd: list[str]) -> str:
+    """Format a shell command while hiding secret-looking KEY=VALUE arguments."""
+    secret_markers = ("KEY", "TOKEN", "SECRET", "PASSWORD")
+    redacted: list[str] = []
+    for item in cmd:
+        if "=" in item:
+            key, _ = item.split("=", 1)
+            if any(marker in key.upper() for marker in secret_markers):
+                redacted.append(f"{key}=<redacted>")
+                continue
+        redacted.append(item)
+    return " ".join(redacted)
+
+
 def run_harbor(
     tasks_path: Path,
     *,
@@ -100,7 +136,9 @@ def run_harbor(
         cmd += ["--env-file", str(env_file)]
     for item in agent_env:
         cmd += ["--ae", item]
-    print(f"+ {' '.join(cmd)}")
+    if opencode_config := _opencode_config_override(agent, model):
+        cmd += ["--ak", f"opencode_config={opencode_config}"]
+    print(f"+ {_redacted_cmd(cmd)}")
     subprocess.run(cmd, check=True)
 
     after = [p for p in jobs_dir.iterdir() if p.is_dir() and p.name not in before]
