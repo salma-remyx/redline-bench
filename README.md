@@ -183,3 +183,27 @@ breaks the judging path.
 REDBENCH_JUDGE_AUDIT_DB=./judge_audit.sqlite3 redlinebench-rejudge ...
 sqlite3 ./judge_audit.sqlite3 "SELECT ts, model, attempts, ok FROM judge_calls;"
 ```
+
+### Inspecting the audit trail
+
+The trail is only useful if you can read it back. `redlinebench-audit`
+summarizes a `judge_calls` DB into a one-line traceability report:
+
+```bash
+redlinebench-audit --db ./judge_audit.sqlite3
+# judge audit: 420 call(s), 418 ok / 2 failed, 1 ok-but-unparseable, ...
+```
+
+The `ok-but-unparseable` count is the headline signal: judge calls the
+trail recorded as `ok` whose raw response does **not** parse into a valid
+`verdicts` object — the same verdict-format-mismatch class that can zero
+out scores. `redlinebench-rejudge` prints this summary automatically at the
+end of a run when `REDBENCH_JUDGE_AUDIT_DB` is set. This is the read half
+of the audit-trail scaffold adapted from *Harnessing LLMs for Reliable
+Academic Supervision: A Comparative Study* (arXiv:2607.14707).
+
+Scope note: the audit trail covers the repo-level `judging.call_judge`
+chokepoint, whose sole caller is `redlinebench-rejudge`. The judge panel
+(majority vote over stored grades, no LLM call) and the in-container Harbor
+verifier (a vendored copy of the judging logic) are not covered by this
+hook.

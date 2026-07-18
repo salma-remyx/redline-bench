@@ -29,6 +29,7 @@ redlinebench-aggregate = "aggregate:main"
 redlinebench-rejudge = "rejudge:main"
 redlinebench-panel = "panel:main"
 redlinebench-reproduce = "reproduce:main"
+redlinebench-audit = "audit_reader:main"
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -47,6 +48,7 @@ py-modules = [
     "docx_metrics",
     "judging",
     "judge_audit",
+    "audit_reader",
     "dataset",
     "reproduce",
 ]

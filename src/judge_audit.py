@@ -11,9 +11,15 @@ latency, outcome) for traceability and post-hoc debugging.
 
 RedlineBench is itself an LLM-as-judge harness that already has
 schema-typed I/O and bounded retry but lacks this audit scaffold. Wiring
-the log into the shared ``judging.call_judge`` chokepoint means every
-judge decision -- re-judging, the judge panel, and reproduction -- is
-recorded without changing ``call_judge``'s return contract.
+the log into the shared ``judging.call_judge`` chokepoint records every
+judge call that flows through the repo-level judging path -- in practice
+the re-judging tool (``rejudge.py``), the sole caller of ``call_judge`` --
+without changing its return contract. Scope note: the judge panel
+(``panel.py``, a majority vote over stored grade JSONs) makes no LLM call,
+and reproduction runs a vendored copy of the judging logic inside the
+Harbor container, so neither of those paths is covered by this hook.
+
+The read/inspection half of this scaffold lives in ``audit_reader``.
 
 Opt-in: logging activates only when ``REDBENCH_JUDGE_AUDIT_DB`` points at a
 writable SQLite path, so the default judging path is unchanged and
