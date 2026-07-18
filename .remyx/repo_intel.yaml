@@ -1,0 +1,18 @@
+schema_version: 1
+fork: salma-remyx/redline-bench
+observed_landing_zones:
+- path: src/
+  shape_tags:
+  - unclassified
+  confirmed_by:
+  - arxiv: 2607.14707v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: "judging.call_judge \u2014 the shared judge chokepoint, reached\
+      \ from the pre-existing redlinebench-rejudge console-script entry point (rejudge.main\
+      \ -> call_judge at rejudge.py:82). panel/reproduce do not cu"
+    branch: harnessing-llms-for-reliable-academic-supervision-a-comparat
+    timestamp: '2026-07-18T01:06:17Z'
+  last_observed: '2026-07-18T01:06:17Z'
+rejected_shapes: []
+coordination_signals: []
+last_updated: '2026-07-18T01:06:17Z'
