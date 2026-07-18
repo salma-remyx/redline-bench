@@ -161,3 +161,25 @@ benchmark/       # gitignored: the dataset, downloaded from HuggingFace at runti
 ## License
 
 Code: MIT (© 2026 Crosby Legal). Dataset: CC-BY-4.0. See [LICENSE](LICENSE).
+
+## Judge-call audit trail
+
+Every LLM judge call flows through one chokepoint (`judging.call_judge`),
+shared by re-judging, the judge panel, and reproduction. Setting the
+`REDBENCH_JUDGE_AUDIT_DB` environment variable to a writable SQLite path
+turns on an **opt-in audit trail**: each judge call is recorded with its
+model, system/user prompt, raw response, attempt count, latency, and
+outcome (ok / error). Unset, the default judging path is unchanged.
+
+This is the persistent-state / audit-trail harness scaffold — adapted from
+*Harnessing LLMs for Reliable Academic Supervision: A Comparative Study*
+(arXiv:2607.14707) — which argues reliability comes from deterministic
+scaffolding around an LLM core. Capturing raw judge responses makes
+verdict-format regressions (e.g. panel scoring zeroing out on a raw
+verdict) debuggable after the fact. The audit is best-effort and never
+breaks the judging path.
+
+```bash
+REDBENCH_JUDGE_AUDIT_DB=./judge_audit.sqlite3 redlinebench-rejudge ...
+sqlite3 ./judge_audit.sqlite3 "SELECT ts, model, attempts, ok FROM judge_calls;"
+```

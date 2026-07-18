@@ -46,6 +46,7 @@ py-modules = [
     "panel_reader",
     "docx_metrics",
     "judging",
+    "judge_audit",
     "dataset",
     "reproduce",
 ]
