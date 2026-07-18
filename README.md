@@ -161,3 +161,22 @@ benchmark/       # gitignored: the dataset, downloaded from HuggingFace at runti
 ## License
 
 Code: MIT (© 2026 Crosby Legal). Dataset: CC-BY-4.0. See [LICENSE](LICENSE).
+
+## Judge calibration (no-reference over-crediting check)
+
+The 3-judge panel grades every rubric PASS/FAIL with **no reference answer in the prompt** — a reference-free setup where LLM judges tend to **over-credit incorrect answers**, and where consulting a reference flips a large share of verdicts (per *LLM Judges Can Be Too Generous When There Is No Reference Answer*, arXiv:2607.12885). `judge_calibration` is a sibling diagnostic to the panel's `judge_agreement` / `sensitivity_per_judge` that quantifies this against a reference judge (gold / human / rollout-grade standard), without touching the weighted-score or panel-vote contract:
+
+- **over-credit rate** — of the rubrics the reference FAILs, the fraction the reference-free judge/panel PASSes (the "too generous" signal);
+- **flip rate** — the fraction of verdicts that change when the reference is consulted;
+- **under-credit rate + net generosity bias** — the symmetric direction, so the net bias is visible.
+
+```bash
+python -m judge_calibration \
+    --judge "gpt-5.4-mini=results/judge/gpt-5.4-mini" \
+    --judge "claude-haiku=results/judge/claude-haiku" \
+    --judge "gemini-3.1-flash-lite=results/judge/gemini-3.1-flash-lite" \
+    --reference "gpt-5.5=results/judge/gpt-5.5" \
+    --out results/calibration
+```
+
+It reads the same per-judge verdict trees `panel.py` does and rebuilds the panel majority with `panel.majority_vote_per_rubric`, so the reported `panel_majority` over-credit rate is the generosity of the score the benchmark actually publishes. The paper's within-judge reference re-prompt (not stored on disk) is substituted by comparing each reference-free judge against the reference-judge tree `panel.py --reference` already consumes; the over-credit / flip measurements themselves are the paper's core mechanism at full fidelity.
