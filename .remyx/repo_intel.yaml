@@ -12,7 +12,12 @@ observed_landing_zones:
       \ -> call_judge at rejudge.py:82). panel/reproduce do not cu"
     branch: harnessing-llms-for-reliable-academic-supervision-a-comparat
     timestamp: '2026-07-18T01:06:17Z'
-  last_observed: '2026-07-18T01:06:17Z'
+  - arxiv: 2607.12885v1
+    mode: ''
+    call_site_specifics: ''
+    branch: llm-judges-can-be-too-generous-when-there-is-no-reference-an
+    timestamp: '2026-07-18T20:48:35Z'
+  last_observed: '2026-07-18T20:48:35Z'
 rejected_shapes: []
 coordination_signals: []
-last_updated: '2026-07-18T01:06:17Z'
+last_updated: '2026-07-18T20:48:35Z'
