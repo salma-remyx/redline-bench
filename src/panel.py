@@ -161,15 +161,28 @@ def main() -> int:
 
     # --- per-judge standalone leaderboards (sensitivity) ---
     per_judge_scores = {}            # label -> {model: {group: score}}
+    has_continuous = False
+    per_judge_continuous = {}        # continuous-weighted sensitivity, when present
     for label, jg in judges.items():
         pmg = defaultdict(dict)
+        pmg_cont = defaultdict(dict)
         by_mt = defaultdict(list)
         for (model, task) in common:
             by_mt[(model, _input_group(task))].append(jg[(model, task)])
         for (model, group), grades in by_mt.items():
             pmg[model][group] = mean(g.get("score", {}).get("weighted", 0.0) for g in grades)
+            cw = [g.get("score", {}).get("continuous_weighted") for g in grades]
+            if any(v is not None for v in cw):
+                has_continuous = True
+                pmg_cont[model][group] = mean(v for v in cw if v is not None)
         per_judge_scores[label] = pmg
+        if pmg_cont:
+            per_judge_continuous[label] = pmg_cont
     sensitivity = {label: _leaderboard(s) for label, s in per_judge_scores.items()}
+    sensitivity_continuous = (
+        {label: _leaderboard(s) for label, s in per_judge_continuous.items()}
+        if has_continuous else None
+    )
 
     # --- panel: rubric-level majority vote ---
     panel_pmg = defaultdict(dict)    # model -> {group: score}
@@ -224,6 +237,8 @@ def main() -> int:
         "judge_agreement": agreement,
         "ranking_stable_across_judges": len({tuple(ranked(lb)) for lb in sensitivity.values()}) == 1,
     }
+    if sensitivity_continuous:
+        summary["sensitivity_continuous_per_judge"] = sensitivity_continuous
     if reference:
         summary["reference_judge"] = reference
         summary["panel_matches_reference_ranking"] = ranked(panel_leaderboard) == ranked(reference["leaderboard"])

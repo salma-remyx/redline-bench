@@ -9,7 +9,7 @@ import importlib
 import pytest
 
 # Pure-stdlib / light modules — must import with no extra deps.
-LIGHT = ["dataset", "aggregate", "panel", "runs_reader"]
+LIGHT = ["dataset", "aggregate", "panel", "runs_reader", "continuous_verifier"]
 
 # Modules that pull in optional deps (lxml, litellm); skip if unavailable.
 HEAVY = [

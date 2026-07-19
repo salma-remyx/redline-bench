@@ -48,4 +48,5 @@ py-modules = [
     "judging",
     "dataset",
     "reproduce",
+    "continuous_verifier",
 ]

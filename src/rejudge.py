@@ -26,6 +26,7 @@ from pathlib import Path
 
 from judging import (
     JUDGE_SYSTEM_PROMPT, aggregate, build_user_prompt, call_judge,
+    grade_continuous,
 )
 
 _NAME_RE = re.compile(r"redline-s(\d+)-t(\d+)-g(\d+)([a-z])")
@@ -45,7 +46,13 @@ def _model_for_trial(trial: Path, override: str | None) -> str:
     return "unknown"
 
 
-def regrade_one(trial: Path, judge_model: str, out_dir: Path, model_override: str | None) -> str:
+def regrade_one(
+    trial: Path,
+    judge_model: str,
+    out_dir: Path,
+    model_override: str | None,
+    continuous_opts: tuple[int, int, bool] | None = None,
+) -> str:
     m = _NAME_RE.search(trial.name)
     if not m:
         return "skip"
@@ -78,9 +85,19 @@ def regrade_one(trial: Path, judge_model: str, out_dir: Path, model_override: st
             for p in grade["score"]["per_rubric"]
         ],
     }
-    user = build_user_prompt(task_ctx, view_p.read_text())
-    resp = call_judge(judge_model, JUDGE_SYSTEM_PROMPT, user)
-    score = aggregate(resp["verdicts"], task_ctx["rubrics"])
+    annotated = view_p.read_text()
+    if continuous_opts is not None:
+        # LLM-as-a-Verifier continuous scoring (logit expectation) in place of
+        # the discrete PASS/FAIL judge. Score carries `continuous` per rubric.
+        scale, repeats, decompose = continuous_opts
+        score = grade_continuous(
+            judge_model, task_ctx, annotated,
+            scale=scale, repeats=repeats, decompose=decompose,
+        )
+    else:
+        user = build_user_prompt(task_ctx, annotated)
+        resp = call_judge(judge_model, JUDGE_SYSTEM_PROMPT, user)
+        score = aggregate(resp["verdicts"], task_ctx["rubrics"])
     out.write_text(json.dumps({
         "task_id": grade["task_id"], "scenario_id": grade["scenario_id"],
         "side": grade["side"], "level": grade["level"], "model": model,
@@ -97,7 +114,26 @@ def main() -> int:
     ap.add_argument("--model", default=None, help="model-label override (else from result.json)")
     ap.add_argument("--workers", type=int, default=12)
     ap.add_argument("--limit", type=int, default=None)
+    # LLM-as-a-Verifier continuous scoring (logit expectation) instead of the
+    # discrete PASS/FAIL judge — see src/continuous_verifier.py.
+    ap.add_argument("--continuous", action="store_true",
+                    help="score with the continuous LLM-as-a-Verifier (logit expectation) "
+                         "instead of the discrete PASS/FAIL judge")
+    ap.add_argument("--scale", type=int, default=10,
+                    help="continuous score granularity (digit levels 0..scale-1)")
+    ap.add_argument("--repeats", type=int, default=1,
+                    help="repeated-evaluation samples to average (variance reduction)")
+    ap.add_argument("--decompose", action="store_true",
+                    help="criteria decomposition: split each criterion into sub-clauses, "
+                         "score each, average")
     args = ap.parse_args()
+
+    continuous_opts = (
+        (args.scale, args.repeats, args.decompose) if args.continuous else None
+    )
+    if continuous_opts:
+        print(f"continuous verifier: scale={args.scale} repeats={args.repeats} "
+              f"decompose={args.decompose}", flush=True)
 
     trials = []
     for j in args.jobs:
@@ -111,7 +147,10 @@ def main() -> int:
 
     counts = {"graded": 0, "skip": 0, "gate0": 0, "error": 0}
     with ThreadPoolExecutor(max_workers=args.workers) as ex:
-        futs = {ex.submit(regrade_one, t, args.judge, out_dir, args.model): t for t in trials}
+        futs = {
+            ex.submit(regrade_one, t, args.judge, out_dir, args.model, continuous_opts): t
+            for t in trials
+        }
         for i, f in enumerate(as_completed(futs), 1):
             try:
                 counts[f.result()] += 1

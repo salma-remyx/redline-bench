@@ -198,3 +198,34 @@ def aggregate(verdicts: list[dict], rubrics: list[dict]) -> dict:
         "n_total": sum(1 for p in per_rubric if not p["is_penalty"]),
         "per_rubric": per_rubric,
     }
+
+
+def grade_continuous(
+    model: str,
+    task: dict,
+    annotated_doc: str,
+    *,
+    scale: int = 10,
+    repeats: int = 1,
+    decompose: bool = False,
+) -> dict:
+    """Grade a redline with continuous LLM-as-a-Verifier scores.
+
+    Drops in where `call_judge` + `aggregate` would go, but instead of a
+    discrete PASS/FAIL per rubric it computes the expectation over the
+    scoring-token logits (see `continuous_verifier`) for a continuous [0, 1]
+    score per rubric, then re-aggregates with the same penalty-aware weighted
+    math. The returned grade matches `aggregate()`'s output shape (so the
+    existing rejudge/panel pipeline consumes it unchanged) and adds a
+    `continuous` field per rubric plus a `continuous_weighted` aggregate.
+
+    Adapts "LLM-as-a-Verifier" (arXiv:2607.05391): `scale` sets the score
+    granularity, `repeats` the repeated-evaluation variance reduction, and
+    `decompose` the criteria-decomposition axis.
+    """
+    from continuous_verifier import continuous_aggregate, score_rubrics_continuous
+
+    per_rubric = score_rubrics_continuous(
+        model, task, annotated_doc, scale=scale, repeats=repeats, decompose=decompose
+    )
+    return continuous_aggregate(per_rubric, task["rubrics"])
