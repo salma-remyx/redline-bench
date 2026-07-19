@@ -123,6 +123,20 @@ def main() -> int:
                 with _lock:
                     print(f"  {i}/{len(trials)} {counts}", flush=True)
     print("done:", counts)
+
+    # Best-effort: when the opt-in judge audit trail is active, surface a
+    # one-line traceability summary of this run's judge calls (the read half
+    # of the audit-trail harness scaffold — see audit_reader / README). Never
+    # fails the run.
+    try:
+        from judge_audit import audit_path
+        db = audit_path()
+        if db:
+            import audit_reader
+            print(audit_reader.format_summary(audit_reader.summarize(db)))
+    except Exception as exc:  # noqa: BLE001
+        print(f"(audit summary unavailable: {exc})", flush=True)
+
     return 0 if counts["error"] == 0 else 1
 
 

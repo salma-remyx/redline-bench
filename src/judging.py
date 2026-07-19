@@ -20,6 +20,8 @@ import re
 import sys
 import time
 
+import judge_audit
+
 MAX_RETRIES = 10
 
 JUDGE_SYSTEM_PROMPT = """\
@@ -134,6 +136,7 @@ def call_judge(model: str, system: str, user: str) -> dict:
 
     kwargs: dict = {"response_format": {"type": "json_object"}}
     last_exc: Exception | None = None
+    started = time.monotonic()
     for attempt in range(MAX_RETRIES):
         try:
             resp = litellm.completion(
@@ -145,7 +148,13 @@ def call_judge(model: str, system: str, user: str) -> dict:
                 timeout=600,
                 **kwargs,
             )
-            return parse_judge_json(resp.choices[0].message.content or "")
+            raw = resp.choices[0].message.content or ""
+            judge_audit.log_judge_call(
+                model=model, system=system, user=user, raw_response=raw,
+                attempts=attempt + 1,
+                latency_ms=(time.monotonic() - started) * 1000, ok=True,
+            )
+            return parse_judge_json(raw)
         except Exception as exc:  # noqa: BLE001
             if "response_format" in kwargs and "response_format" in str(exc):
                 kwargs.pop("response_format")
@@ -155,6 +164,12 @@ def call_judge(model: str, system: str, user: str) -> dict:
                 raise RuntimeError(f"judge request invalid (no retry): {exc!r}") from exc
             last_exc = exc
             time.sleep(min(2**attempt, 60) + random.uniform(0, 1))
+    judge_audit.log_judge_call(
+        model=model, system=system, user=user, raw_response=None,
+        attempts=MAX_RETRIES,
+        latency_ms=(time.monotonic() - started) * 1000, ok=False,
+        error=repr(last_exc),
+    )
     raise RuntimeError(f"judge failed after {MAX_RETRIES} attempts: {last_exc!r}")
 
 
