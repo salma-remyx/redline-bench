@@ -3,7 +3,7 @@ fork: salma-remyx/redline-bench
 observed_landing_zones:
 - path: src/
   shape_tags:
-  - unclassified
+  - library-shape-public-api
   confirmed_by:
   - arxiv: 2607.14707v1
     mode: Mode 2 (adapted port)
@@ -17,7 +17,14 @@ observed_landing_zones:
     call_site_specifics: ''
     branch: llm-judges-can-be-too-generous-when-there-is-no-reference-an
     timestamp: '2026-07-18T20:48:35Z'
-  last_observed: '2026-07-18T20:48:35Z'
+  - arxiv: 2607.05391v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: rejudge.main() (the redlinebench-rejudge console script)
+      via regrade_one(..., continuous_opts) -> grade_continuous -> continuous_verifier;
+      the continuous_weighted grade it produces is then read by pan
+    branch: llm-as-a-verifier-a-general-purpose-verification-framework
+    timestamp: '2026-07-19T13:45:02Z'
+  last_observed: '2026-07-19T13:45:02Z'
 rejected_shapes: []
 coordination_signals: []
-last_updated: '2026-07-18T20:48:35Z'
+last_updated: '2026-07-19T13:45:02Z'
