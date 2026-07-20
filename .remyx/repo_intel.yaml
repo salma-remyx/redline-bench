@@ -24,7 +24,14 @@ observed_landing_zones:
       the continuous_weighted grade it produces is then read by pan
     branch: llm-as-a-verifier-a-general-purpose-verification-framework
     timestamp: '2026-07-19T13:45:02Z'
-  last_observed: '2026-07-19T13:45:02Z'
+  - arxiv: 2607.08535v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: "`panel.main()` \u2014 the `redlinebench-panel` CLI entry\
+      \ point (registered in pyproject.toml `[project.scripts]`); invoked at src/panel.py:220-221,\
+      \ written to panel_summary.json at line 235."
+    branch: when-the-judge-changes-so-does-the-measurement-auditing-llm-
+    timestamp: '2026-07-20T08:10:17Z'
+  last_observed: '2026-07-20T08:10:17Z'
 rejected_shapes: []
 coordination_signals: []
-last_updated: '2026-07-19T13:45:02Z'
+last_updated: '2026-07-20T08:10:17Z'
