@@ -207,3 +207,47 @@ chokepoint, whose sole caller is `redlinebench-rejudge`. The judge panel
 (majority vote over stored grades, no LLM call) and the in-container Harbor
 verifier (a vendored copy of the judging logic) are not covered by this
 hook.
+
+## Judge reliability audit
+
+`redlinebench-panel` already reports per-judge sensitivity and pairwise
+agreement. It also emits a `judge_reliability_audit` block in
+`panel_summary.json` that treats evaluator-replacement as a
+measurement-validity problem: how much does a candidate's score move when
+you swap one judge for another, which rubric slices are judge-sensitive,
+and whether the panel's judges fail independently or redundantly. All three
+probes run over the stored per-judge grade trees the panel already loads,
+so they add no LLM calls.
+
+This is adapted from *When the Judge Changes, So Does the Measurement:
+Auditing LLM-as-Judge Reliability* (arXiv:2607.08535), which argues an
+LLM-as-judge report should carry dataset slices, bias probes,
+error-dependence estimates, and protocol audit trails. Concretely the
+block reports:
+
+- **score drift** — per judge pair, the distribution of per-task weighted-score
+  differences (the paper's "the score moves even when the candidate stays
+  fixed" signal, quantified);
+- **rubric flips by category** — per judge pair, the rubric disagreement rate
+  stratified by rubric category (the "dataset slices" that depend on the
+  judge rather than the candidate);
+- **error dependence** — pairwise correlation of each judge's leave-one-out
+  disagreements with the rest of the panel (the paper's "repeated-sample
+  juries add little when errors are correlated" finding, as a proxy).
+
+```bash
+redlinebench-panel --judge A=results/judge/A --judge B=results/judge/B \
+    --judge C=results/judge/C --out results/panel
+# judge agreement: {'A vs B': 0.81, ...}
+# judge reliability: mean |score drift| 0.07, error-dep corr 0.34
+```
+
+Scope note: the paper's position-bias probe needs pairwise comparison with
+the candidate order swapped and its verbosity-bias probe needs the
+candidate output length; RedlineBench grades each rubric PASS/FAIL and the
+panel substrate carries only verdicts and weights, so neither probe has a
+native surface here and both are out of scope. The paper's cross-model
+scaling study (Qwen3 1.7B→32B, MiniMax M2→M2.7) is a benchmark-suite
+comparison rather than a method, and belongs to a downstream eval. What is
+kept at full fidelity is the measurement-validity audit itself, computed
+over whichever judges the panel is configured with.

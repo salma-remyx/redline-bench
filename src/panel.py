@@ -211,6 +211,15 @@ def main() -> int:
             pmg[model][group] = mean(g.get("score", {}).get("weighted", 0.0) for g in grades)
         reference = {"label": rlabel, "leaderboard": _leaderboard(pmg)}
 
+    # --- judge reliability audit (measurement-validity probes) ---
+    # Cross-judge score drift, category-stratified rubric flips, and
+    # error-dependence: how much the measurement moves when the evaluator
+    # changes, and whether the panel's judges fail independently. Adapted
+    # from "When the Judge Changes, So Does the Measurement" (arXiv:2607.08535);
+    # see judge_reliability for the scope / substitution notes.
+    import judge_reliability
+    reliability = judge_reliability.audit_panel(judges, common)
+
     def ranked(lb):
         return [m for m, _ in sorted(lb.items(), key=lambda kv: -kv[1])]
 
@@ -223,6 +232,7 @@ def main() -> int:
         "sensitivity_rankings": {lbl: ranked(lb) for lbl, lb in sensitivity.items()},
         "judge_agreement": agreement,
         "ranking_stable_across_judges": len({tuple(ranked(lb)) for lb in sensitivity.values()}) == 1,
+        "judge_reliability_audit": reliability,
     }
     if reference:
         summary["reference_judge"] = reference
@@ -251,6 +261,7 @@ def main() -> int:
         print(f"panel matches reference ({reference['label']}) ranking: "
               f"{summary['panel_matches_reference_ranking']}")
     print(f"judge agreement: {agreement}")
+    print(judge_reliability.format_audit(reliability))
     return 0
 
 
