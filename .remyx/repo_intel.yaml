@@ -38,7 +38,14 @@ observed_landing_zones:
       \ imports reliability_consensus and calls reliability_gated_consensus() and "
     branch: project-kaleidoscope-contextual-human-aligned-evaluation-for
     timestamp: '2026-07-21T02:05:28Z'
-  last_observed: '2026-07-21T02:05:28Z'
+  - arxiv: 2607.08700v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: "redlinebench-panel (src/panel.py:main) \u2014 the existing\
+      \ per-judge sensitivity block is extended; the new sensitivity_confusion field\
+      \ is written to panel_summary.json and printed to stdout."
+    branch: do-you-need-a-frontier-model-as-a-citation-verifier-benchmar
+    timestamp: '2026-07-21T22:08:15Z'
+  last_observed: '2026-07-21T22:08:15Z'
 rejected_shapes: []
 coordination_signals: []
-last_updated: '2026-07-21T02:05:28Z'
+last_updated: '2026-07-21T22:08:15Z'
