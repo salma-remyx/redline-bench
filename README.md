@@ -207,3 +207,31 @@ chokepoint, whose sole caller is `redlinebench-rejudge`. The judge panel
 (majority vote over stored grades, no LLM call) and the in-container Harbor
 verifier (a vendored copy of the judging logic) are not covered by this
 hook.
+
+## Judge directional-bias audit
+
+The per-judge sensitivity leaderboard (`sensitivity_per_judge` in
+`panel_summary.json`) collapses each judge family to one scalar score.
+That scalar hides **error direction**: an over-crediting judge
+(rubber-stamps PASS) and an over-rejecting one (FAIL-happy) can tie, yet a
+downstream consensus vote amplifies exactly that difference. So alongside
+the scalar, `redlinebench-panel` now emits `sensitivity_confusion`, which
+breaks each judge's verdicts into the confusion-matrix view against a gold
+reference — false-positive rate, false-negative rate, pass-rate drift,
+pass-class precision/recall/F1, Cohen's kappa, and a `dominant_error` label
+(`over-crediting` / `over-rejecting` / `balanced`). This is the prescriptive
+half of the sensitivity analysis: it tells `redlinebench-rejudge` which
+judge family is safe to cheap out on, not just which one ranks highest.
+
+Gold is the designated `--reference` judge when supplied, otherwise a
+leave-one-out majority of the *other* panel judges (consensus-as-gold).
+This directional-confusion mechanism is adapted from *Do You Need a
+Frontier Model as a Citation Verifier? Benchmarking Rubric LLMs for
+Deep-Research Source Attribution* (arXiv:2607.08700), which audits LLM
+judges with FPR / FNR / pass-rate-drift rather than scalar F1 alone.
+
+Scope note: the directional-metric mechanism (FPR / FNR / drift / kappa)
+is reproduced at full fidelity; only the gold source is substituted. The
+paper scored citation-rubric decisions against human gold labels, which
+this repo does not carry per rubric — the `--reference` judge or
+leave-one-out panel consensus stands in for that gold.

@@ -34,6 +34,8 @@ from itertools import combinations
 from pathlib import Path
 from statistics import mean
 
+from judge_confusion import confusion_metrics, format_confusion
+
 _NAME_RE = re.compile(r"redline-s(\d+)-t(\d+)-g(\d+)([a-z])")
 
 
@@ -211,6 +213,38 @@ def main() -> int:
             pmg[model][group] = mean(g.get("score", {}).get("weighted", 0.0) for g in grades)
         reference = {"label": rlabel, "leaderboard": _leaderboard(pmg)}
 
+    # --- per-judge directional confusion (FPR / FNR / pass-rate drift) ---
+    # `sensitivity_per_judge` above collapses each judge to one scalar and
+    # hides error *direction* — an over-crediting judge and an over-rejecting
+    # one can tie. We break that apart against a gold reference: the
+    # designated --reference judge when supplied, otherwise a leave-one-out
+    # majority of the *other* panel judges (consensus-as-gold, the stand-in
+    # for the paper's human gold labels). This is the prescriptive half of
+    # the sensitivity analysis — it tells `rejudge` which judge family is
+    # safe to cheap out on, not just which ranks highest.
+    # (Adapted from arXiv:2607.08700 — directional-metric mechanism at full
+    # fidelity; only the gold source is substituted.)
+    labels = list(judges)
+    sensitivity_confusion = {}
+    for label in labels:
+        judge_lv: list[str] = []
+        gold_lv: list[str] = []
+        for (model, task) in common:
+            judge_v = {rid: v[0] for rid, v in
+                       _rubric_rows(judges[label][(model, task)]).items()}
+            if reference is not None and (model, task) in ref_common:
+                gold_v = {rid: v[0] for rid, v in
+                          _rubric_rows(ref[(model, task)]).items()}
+            else:
+                others = [_rubric_rows(judges[o][(model, task)])
+                          for o in labels if o != label]
+                gold_v, _ = majority_vote_per_rubric(others)
+            for rid in set(judge_v) & set(gold_v):
+                judge_lv.append(judge_v[rid])
+                gold_lv.append(gold_v[rid])
+        if judge_lv:
+            sensitivity_confusion[label] = confusion_metrics(judge_lv, gold_lv)
+
     def ranked(lb):
         return [m for m, _ in sorted(lb.items(), key=lambda kv: -kv[1])]
 
@@ -221,6 +255,7 @@ def main() -> int:
         "panel_ranking": ranked(panel_leaderboard),
         "sensitivity_per_judge": sensitivity,
         "sensitivity_rankings": {lbl: ranked(lb) for lbl, lb in sensitivity.items()},
+        "sensitivity_confusion": sensitivity_confusion,
         "judge_agreement": agreement,
         "ranking_stable_across_judges": len({tuple(ranked(lb)) for lb in sensitivity.values()}) == 1,
     }
@@ -247,6 +282,13 @@ def main() -> int:
 
     print(f"\npanel (majority vote): {summary['panel_leaderboard']}")
     print(f"ranking stable across judge families: {summary['ranking_stable_across_judges']}")
+    if sensitivity_confusion:
+        source = (f"reference {reference['label']}" if reference
+                  else "leave-one-out panel consensus")
+        print(f"judge directional bias (vs {source}):")
+        for label in labels:
+            if label in sensitivity_confusion:
+                print("  " + format_confusion(label, sensitivity_confusion[label]))
     if reference:
         print(f"panel matches reference ({reference['label']}) ranking: "
               f"{summary['panel_matches_reference_ranking']}")
