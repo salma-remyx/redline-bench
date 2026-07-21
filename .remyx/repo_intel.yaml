@@ -31,7 +31,14 @@ observed_landing_zones:
       \ written to panel_summary.json at line 235."
     branch: when-the-judge-changes-so-does-the-measurement-auditing-llm-
     timestamp: '2026-07-20T08:10:17Z'
-  last_observed: '2026-07-20T08:10:17Z'
+  - arxiv: 2607.14673v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: "panel.main() \u2014 the existing redlinebench-panel CLI\
+      \ entry point (panel:main in pyproject.toml [project.scripts]); src/panel.py\
+      \ imports reliability_consensus and calls reliability_gated_consensus() and "
+    branch: project-kaleidoscope-contextual-human-aligned-evaluation-for
+    timestamp: '2026-07-21T02:05:28Z'
+  last_observed: '2026-07-21T02:05:28Z'
 rejected_shapes: []
 coordination_signals: []
-last_updated: '2026-07-20T08:10:17Z'
+last_updated: '2026-07-21T02:05:28Z'
