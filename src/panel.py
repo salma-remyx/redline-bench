@@ -34,6 +34,8 @@ from itertools import combinations
 from pathlib import Path
 from statistics import mean
 
+import reliability_consensus
+
 _NAME_RE = re.compile(r"redline-s(\d+)-t(\d+)-g(\d+)([a-z])")
 
 
@@ -144,6 +146,10 @@ def main() -> int:
     ap.add_argument("--reference", default=None,
                     help="optional label=path for the reference judge (e.g. gpt-5.5 from rollout grades) "
                          "— compared against the panel but NOT part of the vote")
+    ap.add_argument("--reliability-threshold", type=float, default=0.5,
+                    help="Kaleidoscope-style reliability gate: judges whose mean pairwise agreement "
+                         "with the panel falls below this are dropped from the reliability_gated "
+                         "consensus (reported alongside the official majority-vote score; default 0.5)")
     ap.add_argument("--out", default="results/panel")
     args = ap.parse_args()
 
@@ -185,8 +191,10 @@ def main() -> int:
         panel_pmg[model][group] = mean(task_scores)
     panel_leaderboard = _leaderboard(panel_pmg)
 
-    # --- judge agreement (pairwise rubric-level) ---
+    # --- judge agreement (pairwise rubric-level) + per-judge reliability ---
     agreement = {}
+    agree_sum: dict[str, float] = defaultdict(float)
+    agree_n: dict[str, int] = defaultdict(int)
     for a, b in combinations(judges, 2):
         agree = total = 0
         for (model, task) in common:
@@ -195,7 +203,36 @@ def main() -> int:
                 total += 1
                 if ra[rid][0] == rb[rid][0]:
                     agree += 1
-        agreement[f"{a} vs {b}"] = round(agree / total, 4) if total else None
+        rate = round(agree / total, 4) if total else None
+        agreement[f"{a} vs {b}"] = rate
+        if rate is not None:
+            agree_sum[a] += rate
+            agree_sum[b] += rate
+            agree_n[a] += 1
+            agree_n[b] += 1
+    # Reliability proxy for Kaleidoscope's missing "agreement with labels":
+    # each judge's mean pairwise agreement with the rest of the panel.
+    reliability = {
+        lbl: round(agree_sum[lbl] / agree_n[lbl], 4) if agree_n[lbl] else 0.0
+        for lbl in judges
+    }
+
+    # --- reliability-gated consensus (Kaleidoscope port; REPORTED, not official) ---
+    # Only reliable judges contribute; the official majority-vote score above
+    # is preserved — this is an alternative view in panel_summary.json.
+    gated_pmg: dict = defaultdict(dict)
+    total_flagged = 0
+    for (model, group), keys in by_mt.items():
+        task_scores = []
+        for (m, task) in keys:
+            rubric_sets = [_rubric_rows(judges[label][(m, task)]) for label in judges]
+            gv, gw, n_flagged = reliability_consensus.reliability_gated_consensus(
+                rubric_sets, list(judges), reliability, args.reliability_threshold
+            )
+            total_flagged += n_flagged
+            task_scores.append(weighted_score(gv, gw))
+        gated_pmg[model][group] = mean(task_scores)
+    gated_leaderboard = _leaderboard(gated_pmg)
 
     # --- reference-judge comparison (optional, not part of vote) ---
     reference = None
@@ -223,6 +260,16 @@ def main() -> int:
         "sensitivity_rankings": {lbl: ranked(lb) for lbl, lb in sensitivity.items()},
         "judge_agreement": agreement,
         "ranking_stable_across_judges": len({tuple(ranked(lb)) for lb in sensitivity.values()}) == 1,
+        "reliability_gated": {
+            "threshold": args.reliability_threshold,
+            "leaderboard": dict(sorted(gated_leaderboard.items(), key=lambda kv: -kv[1])),
+            "ranking": ranked(gated_leaderboard),
+            "matches_official_ranking": ranked(gated_leaderboard) == ranked(panel_leaderboard),
+            "report": reliability_consensus.reliability_report(
+                list(judges), reliability, args.reliability_threshold,
+                total_flagged, len(common),
+            ),
+        },
     }
     if reference:
         summary["reference_judge"] = reference
@@ -235,12 +282,12 @@ def main() -> int:
     models = sorted(panel_leaderboard, key=lambda m: -panel_leaderboard[m])
     with (out / "panel_leaderboard.csv").open("w", newline="") as f:
         w = csv.writer(f)
-        cols = ["model", "panel_majority"] + [f"judge:{lbl}" for lbl in judges]
+        cols = ["model", "panel_majority", "panel_reliability_gated"] + [f"judge:{lbl}" for lbl in judges]
         if reference:
             cols.append(f"reference:{reference['label']}")
         w.writerow(cols)
         for m in models:
-            row = [m, panel_leaderboard[m]] + [sensitivity[lbl].get(m) for lbl in judges]
+            row = [m, panel_leaderboard[m], gated_leaderboard[m]] + [sensitivity[lbl].get(m) for lbl in judges]
             if reference:
                 row.append(reference["leaderboard"].get(m))
             w.writerow(row)
@@ -251,6 +298,10 @@ def main() -> int:
         print(f"panel matches reference ({reference['label']}) ranking: "
               f"{summary['panel_matches_reference_ranking']}")
     print(f"judge agreement: {agreement}")
+    rg_report = summary["reliability_gated"]["report"]
+    print(f"reliability-gated consensus (threshold={args.reliability_threshold}): "
+          f"{summary['reliability_gated']['leaderboard']} "
+          f"gated={rg_report['gated_judges']} flagged_for_review={rg_report['n_rubrics_flagged_for_review']}")
     return 0
 
 

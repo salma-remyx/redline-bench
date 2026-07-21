@@ -207,3 +207,35 @@ chokepoint, whose sole caller is `redlinebench-rejudge`. The judge panel
 (majority vote over stored grades, no LLM call) and the in-container Harbor
 verifier (a vendored copy of the judging logic) are not covered by this
 hook.
+
+## Reliability-gated panel consensus
+
+The panel's official score is a strict-majority vote that treats every
+judge family equally. `redlinebench-panel` additionally computes a
+**reliability-gated** consensus view and writes it to `panel_summary.json`
+under `reliability_gated` — the official `panel_leaderboard` is unchanged.
+
+Each judge's *reliability* is its mean pairwise rubric-level agreement with
+the rest of the panel. Judges below `--reliability-threshold` (default
+`0.5`, i.e. no better than chance) are dropped from the gated consensus
+vote, and rubrics left with no reliable judge are counted as flagged for
+human review. The report records per-judge reliability, the gated judges,
+and the flag count.
+
+```bash
+redlinebench-panel --judge gpt-5.4-mini=... --judge claude-haiku=... --judge gemini-flash=... \
+                   --reliability-threshold 0.5 --out results/panel
+# reliability-gated consensus (threshold=0.5): {...} gated=[...] flagged_for_review=N
+```
+
+This is the reliability-gating mechanism adapted from *Project Kaleidoscope:
+Contextual, Human-Aligned Evaluation for Real-World AI Applications*
+(arXiv:2607.14673v1) — "LLM judges automate scoring only when their
+agreement with those labels meets a configured threshold." Kaleidoscope
+gates on agreement with human labels, which the panel does not have at
+aggregation time; the mean pairwise agreement with the panel is used as a
+parameter-free substitute (a `--reference` judge plays the reviewable-label
+role upstream). Scope note: only the gating + flag-for-review mechanism is
+ported; persona-based test generation, contextualized rubrics, and the
+human-review UI live upstream of panel aggregation and are intentionally
+out of scope.

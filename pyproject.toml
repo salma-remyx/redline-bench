@@ -51,4 +51,5 @@ py-modules = [
     "audit_reader",
     "dataset",
     "reproduce",
+    "reliability_consensus",
 ]
