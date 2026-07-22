@@ -207,3 +207,36 @@ chokepoint, whose sole caller is `redlinebench-rejudge`. The judge panel
 (majority vote over stored grades, no LLM call) and the in-container Harbor
 verifier (a vendored copy of the judging logic) are not covered by this
 hook.
+
+## Action-graded severity
+
+The rubric score reduces every criterion to one PASS/FAIL bit, so a model
+that omits a critical indemnity clause and a model that fumbles a
+formatting detail both register as one identical "FAIL". The
+**severity** metric (`src/severity.py`) grades *how wrong* each failure is
+on a fixed L0–L4 ordinal scale, reading only the per-rubric records
+`judging.aggregate()` already emits. It is computed automatically by
+`metrics_summary` and written to the `severity` key of
+`metrics_summary.json` (and printed as a one-line console summary),
+alongside — not in place of — the binary score.
+
+| Level | Name               | Gate                                                                            |
+| ----- | ------------------ | ------------------------------------------------------------------------------- |
+| L0    | no-harm            | Rubric passed, or a penalty rubric correctly avoided                             |
+| L1    | cosmetic           | Miss on a low-importance rubric (\|weight\| ≤ 2)                                 |
+| L2    | minor-ambiguity    | Miss on a moderate-importance rubric (\|weight\| 3–5)                            |
+| L3    | substantive        | Miss on a high-importance rubric (\|weight\| 6–7), or an undesirable edit on a low/moderate penalty |
+| L4    | critical           | Critical-clause omission (\|weight\| ≥ 8), or a serious undesirable edit (penalty \|weight\| ≥ 6) |
+
+The headline field is `high_severity_failures`: how many FAILs grade L3+
+(substantive or critical) — failures indistinguishable from cosmetic ones
+under a raw pass-rate. This is the severity instrument adapted from
+*Beyond Attack-Success Rate: Action-Graded Severity Scale for Tool-Using
+AI Agents* (arXiv:2607.07474), re-pointed at redlining: the paper's
+deterministic oracle over typed action records becomes a deterministic
+oracle over per-rubric records, with the importance `weight`, penalty
+flag, and category standing in for the paper's reversible / cross-scope /
+privilege gates. The paper's 3-frontier-model judge panel is intentionally
+out of scope here; the deterministic oracle is the dependency-free
+integration, and wiring an LLM severity judge through `judging.call_judge`
+to reproduce the paper's oracle↔panel agreement is a natural follow-up.

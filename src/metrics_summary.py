@@ -264,6 +264,15 @@ def run(
         inline_block_threshold=surgicalness_threshold,
     )
 
+    # ── action-graded severity (adapted from arXiv:2607.07474) ──────
+    # Grade the legal-impact severity (L0–L4) of every per-rubric FAIL
+    # the rubric pipeline already produced, exposing *how wrong* each
+    # failure is rather than just that it failed. Local import keeps
+    # this optional alongside the binary score without coupling
+    # metrics_summary's import surface to the severity module.
+    from severity import summarize_severity
+    severity_summary = summarize_severity(trials)
+
     data = {
         "n_trials": len(trials),
         "n_models": len(by_model),
@@ -274,6 +283,7 @@ def run(
         "leaderboard": leaderboard,
         "verbosity_turn1": verbosity,
         "surgicalness": surgicalness,
+        "severity": severity_summary,
     }
 
     out_path = Path(out)
@@ -298,6 +308,13 @@ def run(
             f"{r['best_at_k_turn_weighted']:>10.4f} "
             f"  [{ci[0]:.4f}, {ci[1]:.4f}]"
         )
+    hs = severity_summary["high_severity_failures"]
+    print()
+    print(
+        f"  severity     : {severity_summary['n_failures']} rubric failures "
+        f"({hs['count']} graded L3+, {hs['share_of_failures']:.0%} of failures), "
+        f"mean fail = L{severity_summary['mean_fail_severity']:.1f}"
+    )
     return 0
 
 
