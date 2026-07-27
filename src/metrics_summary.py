@@ -211,6 +211,8 @@ def run(
     add_fable_5: bool = False,
     judge_method: str = "panel",
     surgicalness_threshold: float = 0.30,
+    severity_panel: bool = False,
+    severity_judges: list[str] | None = None,
 ) -> int:
     """Build the metrics summary JSON from a runs/<run-id>/ directory.
 
@@ -273,6 +275,17 @@ def run(
     from severity import summarize_severity
     severity_summary = summarize_severity(trials)
 
+    # ── optional LLM severity-judge panel (arXiv:2607.07474) ────────
+    # Off by default: spends len(judges) LLM calls per rubric failure.
+    # When enabled, a panel of LLM judges grades each oracle-flagged
+    # failure from a tag-free account through judging.call_judge, and
+    # oracle↔panel agreement is reported as Krippendorff's alpha —
+    # alongside (never in place of) the deterministic oracle block.
+    sev_panel = None
+    if severity_panel:
+        from severity_panel import panel_severity_summary
+        sev_panel = panel_severity_summary(trials, judges=severity_judges)
+
     data = {
         "n_trials": len(trials),
         "n_models": len(by_model),
@@ -284,6 +297,7 @@ def run(
         "verbosity_turn1": verbosity,
         "surgicalness": surgicalness,
         "severity": severity_summary,
+        "severity_panel": sev_panel,
     }
 
     out_path = Path(out)
@@ -315,6 +329,14 @@ def run(
         f"({hs['count']} graded L3+, {hs['share_of_failures']:.0%} of failures), "
         f"mean fail = L{severity_summary['mean_fail_severity']:.1f}"
     )
+    if sev_panel is not None:
+        alpha = sev_panel["krippendorff_alpha_ordinal"]
+        alpha_txt = "n/a" if alpha is None else f"{alpha:.4f}"
+        print(
+            f"  sev panel    : alpha={alpha_txt} over "
+            f"{sev_panel['n_failures_judged']} judged failures "
+            f"({len(sev_panel['judges'])} judges)"
+        )
     return 0
 
 
@@ -368,6 +390,25 @@ def main() -> int:
             "path that reads from trajectories/*/grade.json."
         ),
     )
+    ap.add_argument(
+        "--severity-panel", action="store_true",
+        help=(
+            "Additionally grade every oracle-flagged rubric failure with "
+            "an LLM severity-judge panel (tag-free account through "
+            "judging.call_judge) and report oracle-vs-panel agreement as "
+            "Krippendorff's alpha in the 'severity_panel' block. Off by "
+            "default: spends len(--severity-judge) LLM calls per failure."
+        ),
+    )
+    ap.add_argument(
+        "--severity-judge", action="append", default=None, dest="severity_judges",
+        help=(
+            "LiteLLM model string for the severity panel (repeat for an "
+            "odd count). Default: the binary panel's lineup "
+            "(openai/gpt-5.4-mini + anthropic/claude-haiku-4-5 + "
+            "google/gemini-3.1-flash-lite)."
+        ),
+    )
     args = ap.parse_args()
     return run(
         runs=args.runs,
@@ -376,6 +417,8 @@ def main() -> int:
         add_fable_5=args.add_fable_5,
         judge_method=args.judge_method,
         surgicalness_threshold=args.surgicalness_threshold,
+        severity_panel=args.severity_panel,
+        severity_judges=args.severity_judges,
     )
 
 

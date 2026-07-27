@@ -51,4 +51,6 @@ py-modules = [
     "audit_reader",
     "dataset",
     "reproduce",
+    "severity",
+    "severity_panel",
 ]

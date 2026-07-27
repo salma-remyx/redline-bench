@@ -240,3 +240,29 @@ privilege gates. The paper's 3-frontier-model judge panel is intentionally
 out of scope here; the deterministic oracle is the dependency-free
 integration, and wiring an LLM severity judge through `judging.call_judge`
 to reproduce the paper's oracle↔panel agreement is a natural follow-up.
+
+### Severity-judge panel (oracle↔panel agreement)
+
+The follow-up instrument from the same paper is now available as an
+opt-in: `metrics_summary --severity-panel` sends every rubric failure
+the deterministic oracle grades L1+ to a panel of LLM severity judges
+(`src/severity_panel.py`). Each judge reads a **tag-free account** of
+the failure — criterion, legal dimension, and outcome text only, with
+the importance `weight` and penalty flag withheld — so the panel is
+blind to the oracle's inputs, then grades it on the same L0–L4 scale.
+The per-record panel grade is the high median of the judges' levels
+(the ordinal analog of the binary panel's majority vote, breaking ties
+toward higher severity), and oracle↔panel agreement is reported as
+**Krippendorff's alpha (ordinal)** — the paper's headline reliability
+statistic (α = 0.91 on AgentDojo) — in the `severity_panel` block of
+`metrics_summary.json`, alongside `exact_agreement`,
+`within_one_level`, and `mean_abs_deviation`.
+
+Judges run through the shared `judging.call_judge` chokepoint, so
+severity-judge calls appear in the `REDBENCH_JUDGE_AUDIT_DB` audit
+trail like any other judge call, and the binary PASS/FAIL pipeline is
+untouched. The default lineup mirrors the binary panel
+(`openai/gpt-5.4-mini` + `anthropic/claude-haiku-4-5` +
+`google/gemini-3.1-flash-lite`); override with repeated
+`--severity-judge` flags (use an odd count). It is off by default
+because it spends one judge call per judge per rubric failure.
