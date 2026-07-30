@@ -28,6 +28,8 @@ from judging import (
     JUDGE_SYSTEM_PROMPT, aggregate, build_user_prompt, call_judge,
 )
 
+import reliability_scorecard
+
 _NAME_RE = re.compile(r"redline-s(\d+)-t(\d+)-g(\d+)([a-z])")
 _lock = threading.Lock()
 
@@ -45,7 +47,7 @@ def _model_for_trial(trial: Path, override: str | None) -> str:
     return "unknown"
 
 
-def regrade_one(trial: Path, judge_model: str, out_dir: Path, model_override: str | None) -> str:
+def regrade_one(trial: Path, judge_model: str, out_dir: Path, model_override: str | None, reliability: bool = False) -> str:
     m = _NAME_RE.search(trial.name)
     if not m:
         return "skip"
@@ -63,11 +65,14 @@ def regrade_one(trial: Path, judge_model: str, out_dir: Path, model_override: st
     # Gate failures have no judge-gradable output — carry through as 0.
     view_p = trial / "verifier/annotated_view.md"
     if not grade.get("gate", {}).get("passed", True) or not view_p.exists():
-        out.write_text(json.dumps({
+        payload = {
             "task_id": grade.get("task_id"), "model": model, "judge_model": judge_model,
             "gate": grade.get("gate", {"passed": False}),
             "score": {"weighted": 0.0, "per_rubric": []}, "gate_failure": True,
-        }, indent=2))
+        }
+        if reliability:
+            payload["reliability"] = None
+        out.write_text(json.dumps(payload, indent=2))
         return "gate0"
 
     task_ctx = {
@@ -78,14 +83,20 @@ def regrade_one(trial: Path, judge_model: str, out_dir: Path, model_override: st
             for p in grade["score"]["per_rubric"]
         ],
     }
-    user = build_user_prompt(task_ctx, view_p.read_text())
+    view_text = view_p.read_text()
+    user = build_user_prompt(task_ctx, view_text)
     resp = call_judge(judge_model, JUDGE_SYSTEM_PROMPT, user)
     score = aggregate(resp["verdicts"], task_ctx["rubrics"])
-    out.write_text(json.dumps({
+    result = {
         "task_id": grade["task_id"], "scenario_id": grade["scenario_id"],
         "side": grade["side"], "level": grade["level"], "model": model,
         "judge_model": judge_model, "gate": {"passed": True}, "score": score,
-    }, indent=2))
+    }
+    if reliability:
+        result["reliability"] = reliability_scorecard.score_reliability(
+            judge_model, task_ctx, view_text,
+        )
+    out.write_text(json.dumps(result, indent=2))
     return "graded"
 
 
@@ -97,6 +108,15 @@ def main() -> int:
     ap.add_argument("--model", default=None, help="model-label override (else from result.json)")
     ap.add_argument("--workers", type=int, default=12)
     ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument(
+        "--reliability", action="store_true",
+        help=(
+            "Also score each non-gate redline on the CM-LRS reliability "
+            "scorecard (seven 0-5 dimensions, equal-weighted mean) and write "
+            "it under the per-trial 'reliability' key. Adds one extra judge "
+            "call per trial through the shared judging chokepoint."
+        ),
+    )
     args = ap.parse_args()
 
     trials = []
@@ -111,7 +131,7 @@ def main() -> int:
 
     counts = {"graded": 0, "skip": 0, "gate0": 0, "error": 0}
     with ThreadPoolExecutor(max_workers=args.workers) as ex:
-        futs = {ex.submit(regrade_one, t, args.judge, out_dir, args.model): t for t in trials}
+        futs = {ex.submit(regrade_one, t, args.judge, out_dir, args.model, args.reliability): t for t in trials}
         for i, f in enumerate(as_completed(futs), 1):
             try:
                 counts[f.result()] += 1

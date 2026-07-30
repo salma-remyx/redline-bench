@@ -128,10 +128,17 @@ def parse_judge_json(raw: str) -> dict:
     return data
 
 
-def call_judge(model: str, system: str, user: str) -> dict:
-    """Call the judge with retries. No temperature pin (reasoning models reject
-    it); request json_object output, degrade once if unsupported; fail fast on
-    deterministic 4xx."""
+def call_judge_raw(model: str, system: str, user: str) -> str:
+    """Call the judge with retries + audit logging; return the raw response.
+
+    Shared judge chokepoint: every repo-level LLM judge call — verdict
+    judging (``call_judge``), the reliability scorecard
+    (``reliability_scorecard``), and future judge paths — funnels through
+    here so the opt-in ``judge_audit`` trail records them uniformly. No
+    temperature pin (reasoning models reject it); request json_object
+    output, degrade once if unsupported; fail fast on deterministic 4xx.
+    Raises ``RuntimeError`` after ``MAX_RETRIES``.
+    """
     import litellm
 
     kwargs: dict = {"response_format": {"type": "json_object"}}
@@ -154,7 +161,7 @@ def call_judge(model: str, system: str, user: str) -> dict:
                 attempts=attempt + 1,
                 latency_ms=(time.monotonic() - started) * 1000, ok=True,
             )
-            return parse_judge_json(raw)
+            return raw
         except Exception as exc:  # noqa: BLE001
             if "response_format" in kwargs and "response_format" in str(exc):
                 kwargs.pop("response_format")
@@ -171,6 +178,15 @@ def call_judge(model: str, system: str, user: str) -> dict:
         error=repr(last_exc),
     )
     raise RuntimeError(f"judge failed after {MAX_RETRIES} attempts: {last_exc!r}")
+
+
+def call_judge(model: str, system: str, user: str) -> dict:
+    """Call the judge with retries and return the parsed verdicts.
+
+    Thin wrapper over :func:`call_judge_raw` (the shared chokepoint) and
+    :func:`parse_judge_json`; behavior is unchanged for existing callers.
+    """
+    return parse_judge_json(call_judge_raw(model, system, user))
 
 
 def aggregate(verdicts: list[dict], rubrics: list[dict]) -> dict:

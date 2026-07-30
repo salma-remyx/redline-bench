@@ -207,3 +207,41 @@ chokepoint, whose sole caller is `redlinebench-rejudge`. The judge panel
 (majority vote over stored grades, no LLM call) and the in-container Harbor
 verifier (a vendored copy of the judging logic) are not covered by this
 hook.
+
+## Reliability scorecard
+
+Beyond PASS/FAIL per rubric, a redline can be scored for **bankability** —
+whether it is defensible before a counterparty and a reviewing attorney,
+not merely fluent. `redlinebench-rejudge --reliability` asks the judge to
+rate each non-gate redline across seven 0–5 reliability dimensions
+(factual accuracy, evidence traceability, numerical consistency, workflow
+completeness, source discipline, decision usefulness, reviewability) and
+writes the equal-weighted mean — plus the per-dimension breakdown — under
+the per-trial `reliability` key. D2 (traceability) and D7 (reviewability)
+directly reflect this benchmark's emphasis on paragraph-ID-cited
+justifications and disciplined rationale comments.
+
+This is the workflow-output-layer reliability scorecard — adapted from
+*Capital Markets LLM Reliability Score (CM-LRS): From Plausible to
+Bankable* (arXiv:2607.21340), whose headline is "plausibility is cheap;
+bankability is the bar." The call funnels through the same
+`judging.call_judge_raw` chokepoint as verdict judging, so the opt-in
+audit trail above covers it with no new infrastructure. The
+capital-markets dimension anchors are reframed for contract redlining;
+the paper's five-workflow benchmark suite is out of scope here.
+
+```bash
+REDBENCH_JUDGE_AUDIT_DB=./judge_audit.sqlite3 \
+  redlinebench-rejudge --jobs jobs/ref1-* --judge openai/gpt-5.4-mini \
+    --out results/judge/gpt-5.4-mini --reliability
+# per-trial JSON gains:
+# "reliability": {"aggregate": 4.14, "scale": 5, "dimensions": [...]}
+```
+
+Scope note: `--reliability` is opt-in and adds one extra judge call per
+non-gate trial; default re-judging is unchanged. The aggregate defaults
+to the paper's equal-weighted mean and is tunable per dimension via
+`reliability_scorecard.score_reliability(..., weights={...})`. The
+scorecard is produced per redline through the re-judge path; surfacing a
+benchmark-level reliability summary in `metrics_summary.json` is a
+downstream step.
