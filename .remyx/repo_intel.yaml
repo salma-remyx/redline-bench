@@ -52,7 +52,14 @@ observed_landing_zones:
       src/reproduce.py:207; summarize_severity() is called inline du
     branch: beyond-attack-success-rate-action-graded-severity-scale-for-
     timestamp: '2026-07-22T18:35:03Z'
-  last_observed: '2026-07-22T18:35:03Z'
+  - arxiv: 2607.21340v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: "redlinebench-rejudge CLI (rejudge.main \u2192 regrade_one\
+      \ with --reliability=True \u2192 reliability_scorecard.score_reliability, via\
+      \ the shared judging.call_judge_raw chokepoint)"
+    branch: capital-markets-llm-reliability-score-cm-lrs-from-plausible-
+    timestamp: '2026-07-30T15:51:43Z'
+  last_observed: '2026-07-30T15:51:43Z'
 rejected_shapes: []
 coordination_signals: []
-last_updated: '2026-07-22T18:35:03Z'
+last_updated: '2026-07-30T15:51:43Z'
