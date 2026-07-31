@@ -27,12 +27,13 @@ per-rubric records ``judging.aggregate()`` already emits:
 
 What is intentionally NOT ported (Mode 2 substitutions / scoping):
 
-  - The 3-frontier-model judge panel. The repo already runs a 3-judge
-    panel for the binary verdict; the deterministic oracle is the novel
-    instrument and the clean, dependency-free integration. Wiring an LLM
-    severity judge through ``judging.call_judge`` to reproduce the
-    paper's oracle↔panel agreement (Krippendorff α = 0.91) is a natural
-    follow-up, out of scope here.
+  - The paper's 3-frontier-model judge SDK infrastructure — substituted
+    with the repo's existing ``judging.call_judge`` chokepoint (retries,
+    strict-JSON parsing, ``REDBENCH_JUDGE_AUDIT_DB`` audit trail). The
+    LLM severity-judge panel that reproduces the paper's oracle↔panel
+    agreement is provided as an opt-in follow-on in
+    ``severity_panel.py``, gated behind the ``metrics_summary
+    --severity-panel`` flag.
   - The AgentDojo trajectory/benchmark suite — evaluation already lives
     in this repo's own ``runs/<run-id>/`` tree.
 

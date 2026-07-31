@@ -167,6 +167,31 @@ def test_alpha_missing_and_undefined():
     assert severity_panel.krippendorff_alpha([[3, 3], [3, 3]]) == 1.0
 
 
+def test_alpha_matches_krippendorff_published_example():
+    """Krippendorff's own worked example: 4 raters × 12 units with missing
+    values. Published expected values are α_ordinal = 0.815 and
+    α_interval = 0.849 (Krippendorff 2011, also reproduced in R's
+    ``irr::kripp.alpha`` documentation). Cross-checks the stdlib impl
+    against an independently-computed reference rather than our own
+    derivation."""
+    matrix = [
+        [1, 1, None, 1],
+        [2, 2, 3, 2],
+        [3, 3, 3, 3],
+        [3, 3, 3, 3],
+        [2, 2, 2, 2],
+        [1, 2, 3, 4],
+        [4, 4, 4, 4],
+        [1, 1, 2, 1],
+        [2, 2, 2, 2],
+        [None, 5, 5, 5],
+        [None, None, 1, 1],
+        [None, None, None, None],
+    ]
+    assert severity_panel.krippendorff_alpha(matrix, metric="ordinal") == pytest.approx(0.815, abs=0.001)
+    assert severity_panel.krippendorff_alpha(matrix, metric="interval") == pytest.approx(0.849, abs=0.001)
+
+
 # ─── metrics_summary integration (the call site) ─────────────────────
 
 

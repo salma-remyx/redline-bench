@@ -236,10 +236,13 @@ AI Agents* (arXiv:2607.07474), re-pointed at redlining: the paper's
 deterministic oracle over typed action records becomes a deterministic
 oracle over per-rubric records, with the importance `weight`, penalty
 flag, and category standing in for the paper's reversible / cross-scope /
-privilege gates. The paper's 3-frontier-model judge panel is intentionally
-out of scope here; the deterministic oracle is the dependency-free
-integration, and wiring an LLM severity judge through `judging.call_judge`
-to reproduce the paper's oracle↔panel agreement is a natural follow-up.
+privilege gates.
+
+The paper's second instrument — an LLM judge panel that regrades
+failures from a tag-free account, so it's blind to the oracle's inputs —
+ships as an opt-in on top (§below). Oracle↔panel agreement is reported
+as Krippendorff's alpha (ordinal) so a weak oracle mapping is
+distinguishable from a strong one against an independent grader.
 
 ### Severity-judge panel (oracle↔panel agreement)
 
@@ -266,3 +269,24 @@ untouched. The default lineup mirrors the binary panel
 `google/gemini-3.1-flash-lite`); override with repeated
 `--severity-judge` flags (use an odd count). It is off by default
 because it spends one judge call per judge per rubric failure.
+
+### Reading the alpha statistic
+
+A low `krippendorff_alpha_ordinal` does **not** directly mean "your
+rubric weights are arbitrary." It's a triangulation signal, and three
+sources of disagreement can drive it down; this instrument does not
+distinguish between them:
+
+1. The **oracle mapping** (rubric metadata → L-level) is miscalibrated
+   for the scenario in question.
+2. The **rubric weights** themselves (importance, penalty flags) are
+   noisy or inconsistent across attorney authors.
+3. The **panel** is weak (small n, one judge dominating,
+   prompt/scale-anchor drift).
+
+Interpret the number as construct-validity evidence, not as a rubric
+audit. For diagnosing which of (1)–(3) applies on a specific run, read
+the per-judge grades and rationales in the audit trail
+(`REDBENCH_JUDGE_AUDIT_DB`). A minimum-n guard is not enforced — small
+failure counts produce unstable alpha; treat values under ~30 judged
+failures as directional rather than as measurements.
