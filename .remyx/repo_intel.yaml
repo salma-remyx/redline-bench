@@ -60,6 +60,12 @@ observed_landing_zones:
     branch: capital-markets-llm-reliability-score-cm-lrs-from-plausible-
     timestamp: '2026-07-30T15:51:43Z'
   last_observed: '2026-07-30T15:51:43Z'
-rejected_shapes: []
+rejected_shapes:
+- shape_tag: null
+  reason_code: null
+  reason_summary: ''
+  observed:
+  - arxiv: 2607.19056v1
+    timestamp: '2026-07-31T22:39:06Z'
 coordination_signals: []
-last_updated: '2026-07-30T15:51:43Z'
+last_updated: '2026-07-31T22:39:06Z'
