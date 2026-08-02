@@ -59,7 +59,14 @@ observed_landing_zones:
       \ the shared judging.call_judge_raw chokepoint)"
     branch: capital-markets-llm-reliability-score-cm-lrs-from-plausible-
     timestamp: '2026-07-30T15:51:43Z'
-  last_observed: '2026-07-30T15:51:43Z'
+  - arxiv: 2607.18828v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: redlinebench-panel CLI -> panel.main() (the judge_bias_stats.summarize_panel_bias
+      call at src/panel.py:207); result written to panel_summary.json['judge_bias_stats']
+      and printed to stdout
+    branch: evaluating-medical-ai-under-missing-information-same-provide
+    timestamp: '2026-08-02T03:47:15Z'
+  last_observed: '2026-08-02T03:47:15Z'
 rejected_shapes:
 - shape_tag: null
   reason_code: null
@@ -68,4 +75,4 @@ rejected_shapes:
   - arxiv: 2607.19056v1
     timestamp: '2026-08-01T12:49:19Z'
 coordination_signals: []
-last_updated: '2026-08-01T12:49:19Z'
+last_updated: '2026-08-02T03:47:15Z'
