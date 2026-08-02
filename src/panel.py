@@ -34,6 +34,8 @@ from itertools import combinations
 from pathlib import Path
 from statistics import mean
 
+import judge_bias_stats
+
 _NAME_RE = re.compile(r"redline-s(\d+)-t(\d+)-g(\d+)([a-z])")
 
 
@@ -197,6 +199,13 @@ def main() -> int:
                     agree += 1
         agreement[f"{a} vs {b}"] = round(agree / total, 4) if total else None
 
+    # --- multi-rater agreement + leniency-adjusted same-provider bias ---
+    # Fleiss' kappa across the whole panel and a judge-fixed-effect-netted
+    # same-provider association (Monte-Carlo permutation test) over the
+    # per-rubric verdicts — adapted from arXiv:2607.18828 (see
+    # src/judge_bias_stats.py for the mode-2 logistic->LPM substitution).
+    bias_stats = judge_bias_stats.summarize_panel_bias(judges, common, _rubric_rows)
+
     # --- reference-judge comparison (optional, not part of vote) ---
     reference = None
     if args.reference:
@@ -222,6 +231,7 @@ def main() -> int:
         "sensitivity_per_judge": sensitivity,
         "sensitivity_rankings": {lbl: ranked(lb) for lbl, lb in sensitivity.items()},
         "judge_agreement": agreement,
+        "judge_bias_stats": bias_stats,
         "ranking_stable_across_judges": len({tuple(ranked(lb)) for lb in sensitivity.values()}) == 1,
     }
     if reference:
@@ -251,6 +261,15 @@ def main() -> int:
         print(f"panel matches reference ({reference['label']}) ranking: "
               f"{summary['panel_matches_reference_ranking']}")
     print(f"judge agreement: {agreement}")
+    fk = bias_stats["fleiss_kappa"]
+    if fk["kappa"] is not None:
+        print(f"judge Fleiss' kappa: {fk['kappa']:.3f} "
+              f"({fk['n_items']} rubric-items, {fk['n_raters']} judges)")
+    spa = bias_stats["same_provider_association"]
+    if spa["coef"] is not None:
+        print(f"same-provider leniency (judge-FE netted): "
+              f"coef={spa['coef']:+.4f} perm_p={spa['perm_p']:.4f} "
+              f"({spa['n_same_provider']}/{spa['n']} same-provider votes)")
     return 0
 
 

@@ -207,3 +207,45 @@ chokepoint, whose sole caller is `redlinebench-rejudge`. The judge panel
 (majority vote over stored grades, no LLM call) and the in-container Harbor
 verifier (a vendored copy of the judging logic) are not covered by this
 hook.
+
+## Judge-panel agreement & bias statistics
+
+`redlinebench-panel` already reports per-judge leaderboards and pairwise
+judge-agreement rates. It now also emits two whole-panel evaluator
+statistics into `panel_summary.json` under `judge_bias_stats`:
+
+- **Fleiss' κ** — multi-rater agreement across the *whole* judge panel
+  (pairwise rates alone can hide that the panel agrees only moderately),
+  computed over rubric-items every judge graded.
+- **Same-provider leniency** — the boost a judge grants models from its
+  *own* provider on `P(PASS)`, net of its general leniency. Fit as a
+  vote-level regression (`PASS ~ judge fixed effects + same_provider`),
+  significance-tested by a Monte-Carlo permutation test. Provider is read
+  off the judge/model labels (`gpt-*` → openai, `claude-*` → anthropic,
+  `gemini-*` → google, …); pass `provider_of=` to override.
+
+```bash
+redlinebench-panel --judge gpt-5.4-mini=... --judge claude-haiku-4-5=... \
+                   --judge gemini-3.5-flash=... --out results/panel
+# judge Fleiss' kappa: 0.612 (320 rubric-items, 3 judges)
+# same-provider leniency (judge-FE netted): coef=+0.0973 perm_p=0.0410 (48/960 same-provider votes)
+```
+
+This is the evaluator-facing half of *Evaluating medical AI under missing
+information: same-provider judges and human raters change apparent safety*
+(arXiv:2607.18828), which shows judge choice materially changes apparent
+safety — inter-judge agreement is only moderate, and a same-provider
+leniency effect survives after adjusting for each judge's general leniency.
+Mode-2 adaptation, cited: the paper's vote-level *logistic* regression is
+replaced by a *linear probability model* with judge fixed effects, so the
+same-provider slope is reported directly on the probability scale (the scale
+the paper itself uses, "~ +0.10") and the permutation null is tractable in
+pure Python (O(votes) per permutation via Frisch–Waugh–Lovell
+residualization, no numpy/scipy). The medical-AI experiment, clinician
+reference, and benchmark suite are not ported — this consumes the panel's
+own per-rubric verdicts.
+
+Scope note: `judge_bias_stats` reads stored grades only (no LLM call) and
+runs unconditionally as part of `redlinebench-panel`. When no judge shares a
+provider with any benchmarked model, `same_provider_association` returns
+`coef: null` with a `note`, and the rest of the panel summary is unchanged.
