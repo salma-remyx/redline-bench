@@ -34,6 +34,8 @@ from itertools import combinations
 from pathlib import Path
 from statistics import mean
 
+import pairwise_elo
+
 _NAME_RE = re.compile(r"redline-s(\d+)-t(\d+)-g(\d+)([a-z])")
 
 
@@ -145,6 +147,9 @@ def main() -> int:
                     help="optional label=path for the reference judge (e.g. gpt-5.5 from rollout grades) "
                          "— compared against the panel but NOT part of the vote")
     ap.add_argument("--out", default="results/panel")
+    ap.add_argument("--pairwise-threshold", type=float, default=0.5,
+                    help="agreement fraction for the pairwise-Elo ranking: "
+                         "0.5=majority (default), 1.0=unanimity — see pairwise_elo.py")
     args = ap.parse_args()
 
     judges = {}
@@ -185,6 +190,12 @@ def main() -> int:
         panel_pmg[model][group] = mean(task_scores)
     panel_leaderboard = _leaderboard(panel_pmg)
 
+    # --- pairwise-Elo ranking (alongside the pointwise panel score) ---
+    # Reframes the same per-judge grades as head-to-head model comparisons
+    # aggregated under an adjustable agreement threshold -> Elo ratings.
+    pelo = pairwise_elo.panel_pairwise_elo(
+        judges, common, agreement_threshold=args.pairwise_threshold)
+
     # --- judge agreement (pairwise rubric-level) ---
     agreement = {}
     for a, b in combinations(judges, 2):
@@ -223,6 +234,7 @@ def main() -> int:
         "sensitivity_rankings": {lbl: ranked(lb) for lbl, lb in sensitivity.items()},
         "judge_agreement": agreement,
         "ranking_stable_across_judges": len({tuple(ranked(lb)) for lb in sensitivity.values()}) == 1,
+        "pairwise_elo": pelo,
     }
     if reference:
         summary["reference_judge"] = reference
@@ -251,6 +263,10 @@ def main() -> int:
         print(f"panel matches reference ({reference['label']}) ranking: "
               f"{summary['panel_matches_reference_ranking']}")
     print(f"judge agreement: {agreement}")
+    print(f"pairwise-Elo (threshold={pelo['agreement_threshold']}): "
+          f"{pelo['ranking']}  coverage={pelo['coverage']} "
+          f"({pelo['n_considered']} cmp, {pelo['n_abstained']} abstained, "
+          f"{pelo['n_unanimous']} unanimous)")
     return 0
 
 
