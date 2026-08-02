@@ -66,7 +66,14 @@ observed_landing_zones:
       and printed to stdout
     branch: evaluating-medical-ai-under-missing-information-same-provide
     timestamp: '2026-08-02T03:47:15Z'
-  last_observed: '2026-08-02T03:47:15Z'
+  - arxiv: 2607.28282v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: 'panel.main() -- the redlinebench-panel console-script entry
+      point ([project.scripts]: redlinebench-panel = "panel:main"). pairwise_elo.panel_pairwise_elo(judges,
+      common, agreement_threshold=args.pairw'
+    branch: towards-scalable-reliable-automated-evaluation-with-large-la
+    timestamp: '2026-08-02T17:37:00Z'
+  last_observed: '2026-08-02T17:37:00Z'
 rejected_shapes:
 - shape_tag: null
   reason_code: null
@@ -75,4 +82,4 @@ rejected_shapes:
   - arxiv: 2607.19056v1
     timestamp: '2026-08-01T12:49:19Z'
 coordination_signals: []
-last_updated: '2026-08-02T03:47:15Z'
+last_updated: '2026-08-02T17:37:00Z'
