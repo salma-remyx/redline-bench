@@ -207,3 +207,38 @@ chokepoint, whose sole caller is `redlinebench-rejudge`. The judge panel
 (majority vote over stored grades, no LLM call) and the in-container Harbor
 verifier (a vendored copy of the judging logic) are not covered by this
 hook.
+
+## Capability diagnosis
+
+The panel reports *where* a model fails (the leaderboard). The capability
+diagnosis reports *why*: it treats each rubric criterion as a capability
+probe, groups probes into a small capability tree (root → category → keyword
+sub-cluster), scores the model at every node, and flags the nodes where it
+is weakest. The diagnosis is written to
+`panel_summary.json["capability_diagnosis"]` by `redlinebench-panel`, one
+entry per model, each listing its weak capabilities with their pass rate,
+member rubrics, and the failing rubrics' judge justifications.
+
+This is the diagnosis step of CRAFT (Khasseh et al., *CRAFT: Clustering
+Rubrics to Diagnose Weak LLM Capabilities and Generate Targeted Fine-Tuning
+Data*, arXiv:2607.16122), adapted to RedlineBench:
+
+- CRAFT extracts a capability description from each prompt-rubric pair with
+  an LLM. RedlineBench rubrics already carry a `criteria` field, so the
+  rubric *is* the probe — no extraction call.
+- CRAFT clusters descriptions with embeddings into a hierarchical tree.
+  Here the tree is a parameter-free lexical proxy (rubrics probing the same
+  capability share vocabulary), approximating the embedding signal with no
+  model dependency.
+- CRAFT selects low-performing nodes dynamically across tree levels, at the
+  granularity where each failure is clearest. That selection rule is kept
+  verbatim.
+- CRAFT then generates targeted supervised fine-tuning data. That step needs
+  training infrastructure this harness does not host, so it is out of scope;
+  each weak node instead carries the failing rubrics' judge justifications —
+  the seed material that would direct such generation downstream.
+
+Penalty rubrics (negative weight — an edit flagged as undesirable) are
+scored with their verdict inverted: avoiding the bad edit is the capability
+success, matching the harness's own scoring.
+

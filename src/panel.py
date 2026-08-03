@@ -34,6 +34,8 @@ from itertools import combinations
 from pathlib import Path
 from statistics import mean
 
+import capability_diagnosis
+
 _NAME_RE = re.compile(r"redline-s(\d+)-t(\d+)-g(\d+)([a-z])")
 
 
@@ -173,6 +175,11 @@ def main() -> int:
 
     # --- panel: rubric-level majority vote ---
     panel_pmg = defaultdict(dict)    # model -> {group: score}
+    # Per-rubric panel rows feeding the capability diagnosis below (verdict =
+    # majority vote; criteria/category/justification are rubric-invariant, so
+    # we read them from any one judge's stored grade).
+    panel_rubric_rows: dict[str, list[dict]] = defaultdict(list)
+    first_label = next(iter(judges))
     by_mt = defaultdict(list)
     for (model, task) in common:
         by_mt[(model, _input_group(task))].append((model, task))
@@ -182,6 +189,19 @@ def main() -> int:
             rubric_sets = [_rubric_rows(judges[label][(m, task)]) for label in judges]
             panel_verdicts, weights = majority_vote_per_rubric(rubric_sets)
             task_scores.append(weighted_score(panel_verdicts, weights))
+            meta = {
+                p["rubric_id"]: p
+                for p in judges[first_label][(m, task)].get("score", {}).get("per_rubric", [])
+            }
+            for rid, verdict in panel_verdicts.items():
+                info = meta.get(rid, {})
+                panel_rubric_rows[m].append({
+                    "rubric_id": rid, "verdict": verdict,
+                    "weight": weights.get(rid, 0),
+                    "category": info.get("category"),
+                    "criteria": info.get("criteria"),
+                    "justification": info.get("justification"),
+                })
         panel_pmg[model][group] = mean(task_scores)
     panel_leaderboard = _leaderboard(panel_pmg)
 
@@ -228,6 +248,9 @@ def main() -> int:
         summary["reference_judge"] = reference
         summary["panel_matches_reference_ranking"] = ranked(panel_leaderboard) == ranked(reference["leaderboard"])
 
+    # Capability diagnosis (CRAFT): *why* each model is weak, not just *where*.
+    summary["capability_diagnosis"] = capability_diagnosis.diagnose_weak_capabilities(panel_rubric_rows)
+
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     (out / "panel_summary.json").write_text(json.dumps(summary, indent=2))
@@ -251,6 +274,9 @@ def main() -> int:
         print(f"panel matches reference ({reference['label']}) ranking: "
               f"{summary['panel_matches_reference_ranking']}")
     print(f"judge agreement: {agreement}")
+    print("capability diagnosis (weak capability nodes per model): "
+          + ", ".join(f"{m}={len(d['weak_capabilities'])}"
+                      for m, d in summary["capability_diagnosis"].items()))
     return 0
 
 
