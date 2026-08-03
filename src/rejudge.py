@@ -4,7 +4,9 @@
 Reads each trial's saved `verifier/annotated_view.md` and the rubric set it was
 graded against (from `verifier/grade.json`), re-judges with --judge, and writes
 grades to <out>/<model>/<task>.json. Resume-safe (skips existing). No sandboxes,
-no .docx re-rendering — judging is a single LLM call per output.
+no .docx re-rendering — judging is one LLM call per output by default; pass
+`--judge-samples N` (N > 1) to scale judge-time compute by sampling N times and
+resolving a per-rubric majority-vote consensus (see `judge_consensus`).
 
 Used to run additional judge families for the 3-judge panel and the
 judge-sensitivity analysis.
@@ -24,6 +26,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+import judge_consensus
 from judging import (
     JUDGE_SYSTEM_PROMPT, aggregate, build_user_prompt, call_judge,
 )
@@ -45,7 +48,10 @@ def _model_for_trial(trial: Path, override: str | None) -> str:
     return "unknown"
 
 
-def regrade_one(trial: Path, judge_model: str, out_dir: Path, model_override: str | None) -> str:
+def regrade_one(
+    trial: Path, judge_model: str, out_dir: Path, model_override: str | None,
+    judge_samples: int = 1,
+) -> str:
     m = _NAME_RE.search(trial.name)
     if not m:
         return "skip"
@@ -79,12 +85,19 @@ def regrade_one(trial: Path, judge_model: str, out_dir: Path, model_override: st
         ],
     }
     user = build_user_prompt(task_ctx, view_p.read_text())
-    resp = call_judge(judge_model, JUDGE_SYSTEM_PROMPT, user)
+    if judge_samples > 1:
+        # Judge-time-compute scaling: N judge samples -> per-rubric majority
+        # vote (self-consensus). See judge_consensus (Verdict, arXiv:2502.18018).
+        resp = judge_consensus.scale_judge(
+            judge_model, JUDGE_SYSTEM_PROMPT, user, samples=judge_samples)
+    else:
+        resp = call_judge(judge_model, JUDGE_SYSTEM_PROMPT, user)
     score = aggregate(resp["verdicts"], task_ctx["rubrics"])
     out.write_text(json.dumps({
         "task_id": grade["task_id"], "scenario_id": grade["scenario_id"],
         "side": grade["side"], "level": grade["level"], "model": model,
         "judge_model": judge_model, "gate": {"passed": True}, "score": score,
+        **({"consensus": resp["consensus"]} if "consensus" in resp else {}),
     }, indent=2))
     return "graded"
 
@@ -97,6 +110,10 @@ def main() -> int:
     ap.add_argument("--model", default=None, help="model-label override (else from result.json)")
     ap.add_argument("--workers", type=int, default=12)
     ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument(
+        "--judge-samples", type=int, default=1,
+        help="judge-time-compute scaling: sample the judge N times per trial "
+             "and resolve a per-rubric majority-vote consensus (1 = single call).")
     args = ap.parse_args()
 
     trials = []
@@ -111,7 +128,10 @@ def main() -> int:
 
     counts = {"graded": 0, "skip": 0, "gate0": 0, "error": 0}
     with ThreadPoolExecutor(max_workers=args.workers) as ex:
-        futs = {ex.submit(regrade_one, t, args.judge, out_dir, args.model): t for t in trials}
+        futs = {
+            ex.submit(regrade_one, t, args.judge, out_dir, args.model, args.judge_samples): t
+            for t in trials
+        }
         for i, f in enumerate(as_completed(futs), 1):
             try:
                 counts[f.result()] += 1

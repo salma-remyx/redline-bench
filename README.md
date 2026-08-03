@@ -207,3 +207,33 @@ chokepoint, whose sole caller is `redlinebench-rejudge`. The judge panel
 (majority vote over stored grades, no LLM call) and the in-container Harbor
 verifier (a vendored copy of the judging logic) are not covered by this
 hook.
+
+## Judge-time-compute scaling
+
+The same `judging.call_judge` chokepoint powers an opt-in **judge-time-compute**
+mode for the single-judge path: instead of trusting one greedy judge call per
+trial, sample the judge `N` times on the same prompt and resolve a per-rubric
+consensus by majority vote (self-consistency). This is complementary to the
+3-judge panel — the panel resolves *cross-model* disagreement over stored grade
+JSONs (and makes no LLM call), while this scales compute *within one model* on
+the live re-judging path.
+
+```bash
+# Sample the judge 5x per trial and majority-vote each rubric.
+redlinebench-rejudge --judge openai/gpt-5.4-mini --judge-samples 5 --jobs jobs/ref1-* --out results/judge/gpt-5.4-mini
+```
+
+With `--judge-samples 1` (the default) the path is unchanged. With `N > 1`, each
+written grade gains a `consensus` block: per-rubric `n_samples`, `n_pass`, the
+winning-faction `agreement` share, and a `contested` flag (rubrics where
+agreement falls below 2/3, i.e. the judge was unreliable on them). Per-sample
+failures are tolerated — the consensus is built from the samples that succeeded.
+
+This is the aggregation unit from *Verdict: A Library for Scaling Judge-Time
+Compute* (Stanfield et al., arXiv:2502.18018), which argues judge reliability
+improves when you compose modular reasoning units (verification, debate,
+aggregation) and spend more inference-time compute. Verdict's Unit/Graph DSL,
+debate protocol, and learned verifiers are library infrastructure this repo does
+not host; here the aggregation unit wraps the existing `call_judge` /
+`aggregate` primitives, and a parameter-free per-rubric agreement margin stands
+in for the verification unit's interpretability signal.

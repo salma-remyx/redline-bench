@@ -48,6 +48,7 @@ py-modules = [
     "docx_metrics",
     "judging",
     "judge_audit",
+    "judge_consensus",
     "audit_reader",
     "dataset",
     "reproduce",
