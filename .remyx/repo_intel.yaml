@@ -80,7 +80,14 @@ observed_landing_zones:
       \ at src/panel.py:252 and writes the result into summary['ca"
     branch: craft-clustering-rubrics-to-diagnose-weak-llm-capabilities-a
     timestamp: '2026-08-03T08:34:01Z'
-  last_observed: '2026-08-03T08:34:01Z'
+  - arxiv: 2502.18018v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: 'the pre-existing `redlinebench-rejudge` CLI (`rejudge.main`),
+      via `regrade_one()` in `src/rejudge.py:88-92`, which calls `judge_consensus.scale_judge(...)`
+      when `--judge-samples N` (N>1); the default '
+    branch: verdict-a-library-for-scaling-judge-time-compute
+    timestamp: '2026-08-03T23:58:52Z'
+  last_observed: '2026-08-03T23:58:52Z'
 rejected_shapes:
 - shape_tag: null
   reason_code: null
@@ -89,4 +96,4 @@ rejected_shapes:
   - arxiv: 2607.19056v1
     timestamp: '2026-08-01T12:49:19Z'
 coordination_signals: []
-last_updated: '2026-08-03T08:34:01Z'
+last_updated: '2026-08-03T23:58:52Z'
