@@ -73,7 +73,14 @@ observed_landing_zones:
       common, agreement_threshold=args.pairw'
     branch: towards-scalable-reliable-automated-evaluation-with-large-la
     timestamp: '2026-08-02T17:37:00Z'
-  last_observed: '2026-08-02T17:37:00Z'
+  - arxiv: 2607.16122v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: "panel.main() \u2014 the pre-existing redlinebench-panel\
+      \ CLI entry point \u2014 calls capability_diagnosis.diagnose_weak_capabilities(panel_rubric_rows)\
+      \ at src/panel.py:252 and writes the result into summary['ca"
+    branch: craft-clustering-rubrics-to-diagnose-weak-llm-capabilities-a
+    timestamp: '2026-08-03T08:34:01Z'
+  last_observed: '2026-08-03T08:34:01Z'
 rejected_shapes:
 - shape_tag: null
   reason_code: null
@@ -82,4 +89,4 @@ rejected_shapes:
   - arxiv: 2607.19056v1
     timestamp: '2026-08-01T12:49:19Z'
 coordination_signals: []
-last_updated: '2026-08-02T17:37:00Z'
+last_updated: '2026-08-03T08:34:01Z'
