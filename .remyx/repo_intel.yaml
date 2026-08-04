@@ -87,7 +87,14 @@ observed_landing_zones:
       when `--judge-samples N` (N>1); the default '
     branch: verdict-a-library-for-scaling-judge-time-compute
     timestamp: '2026-08-03T23:58:52Z'
-  last_observed: '2026-08-03T23:58:52Z'
+  - arxiv: 2607.19056v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: metrics_summary._build_docx_metrics (the docx-metrics builder),
+      reached from metrics_summary.run(), which the redlinebench-reproduce CLI invokes
+      via reproduce.main() at src/reproduce.py:207 in the sta
+    branch: vector-bench-can-models-surgically-edit-svg-code
+    timestamp: '2026-08-04T16:57:35Z'
+  last_observed: '2026-08-04T16:57:35Z'
 rejected_shapes:
 - shape_tag: null
   reason_code: null
@@ -96,4 +103,4 @@ rejected_shapes:
   - arxiv: 2607.19056v1
     timestamp: '2026-08-01T12:49:19Z'
 coordination_signals: []
-last_updated: '2026-08-03T23:58:52Z'
+last_updated: '2026-08-04T16:57:35Z'
