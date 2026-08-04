@@ -16,6 +16,9 @@ the benchmark-level metrics derived from those raw grade artifacts:
   7. Verbosity trap (turn 1 only — paragraph-index alignment is
      reliable when the input is the clean template)
   8. Surgicalness (inline/block share per model + human baseline)
+  9. Specification editing (turn 1 — repair progress, unintended
+     change rate, and binary specification reward vs the attorney
+     redline's requested-vs-protected paragraphs)
 
 Models are auto-discovered: any directory under
 `runs/<run-id>/trajectories/` is treated as one model's full trace set,
@@ -56,6 +59,7 @@ from runs_reader import (
     collect_from_runs_dir,
     rows_by_model,
 )
+from specification_editing import compute_specification_editing
 
 
 # ─── confidence interval ────────────────────────────────────────────
@@ -155,9 +159,10 @@ def _build_docx_metrics(
     *,
     include_fable_5: bool,
     inline_block_threshold: float = 0.30,
-) -> tuple[dict, dict]:
-    """Walk the on-disk docx files and compute the two docx-driven
-    sections: verbosity (turn-1) + surgicalness (all turns).
+) -> tuple[dict, dict, dict]:
+    """Walk the on-disk docx files and compute the three docx-driven
+    sections: verbosity (turn-1) + surgicalness (all turns) +
+    specification editing (turn-1).
 
     `benchmark_dir` is the resolved benchmark root (containing `tasks/`);
     the expert attorney redlines are read from
@@ -197,7 +202,13 @@ def _build_docx_metrics(
     }
     verbosity = compute_verbosity_turn1(by_model_turn1, expert_turn1)
 
-    return verbosity, surgicalness
+    # Specification editing (turn 1): reuses the same model/expert
+    # pairing as verbosity. Ports Vector-Bench's repair-progress,
+    # unintended-change-rate, and binary specification-reward signals
+    # onto the attorney-redline "requested vs protected" plumbing.
+    specification = compute_specification_editing(by_model_turn1, expert_turn1)
+
+    return verbosity, surgicalness, specification
 
 
 # ─── main ───────────────────────────────────────────────────────────
@@ -257,8 +268,8 @@ def run(
     leaderboard = build_leaderboard(by_model)
     models = [r["model"] for r in leaderboard]
 
-    # ── docx-driven metrics (verbosity + surgicalness) ────────────
-    verbosity, surgicalness = _build_docx_metrics(
+    # ── docx-driven metrics (verbosity + surgicalness + specification) ──
+    verbosity, surgicalness, specification = _build_docx_metrics(
         runs_dir, benchmark_dir,
         include_fable_5=add_fable_5,
         inline_block_threshold=surgicalness_threshold,
@@ -274,6 +285,7 @@ def run(
         "leaderboard": leaderboard,
         "verbosity_turn1": verbosity,
         "surgicalness": surgicalness,
+        "specification_editing": specification,
     }
 
     out_path = Path(out)

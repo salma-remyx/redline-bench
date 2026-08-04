@@ -19,6 +19,7 @@ HEAVY = [
     "metrics_summary",
     "rejudge",
     "reproduce",
+    "specification_editing",
 ]
 
 
