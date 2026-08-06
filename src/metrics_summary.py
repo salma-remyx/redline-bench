@@ -200,6 +200,27 @@ def _build_docx_metrics(
     return verbosity, surgicalness
 
 
+# ─── prompt-design sensitivity (opt-in) ─────────────────────────────
+
+
+def _run_prompt_sensitivity(runs_dir: Path, judge_model: str, *, sample: int) -> dict:
+    """Opt-in prompt-design sensitivity diagnostic (adapted from
+    VeyraBench, arXiv:2607.19257). Best-effort: never raises into ``run()``.
+    """
+    try:
+        import prompt_sensitivity
+
+        diag = prompt_sensitivity.analyze_runs(runs_dir, judge_model, sample=sample)
+    except Exception as exc:  # noqa: BLE001
+        print(f"  prompt-sens  : unavailable ({exc})")
+        return {"error": str(exc)}
+    axes = diag.get("axes", {})
+    delta = ", ".join(f"{a}={v['mean_abs_score_delta']}" for a, v in axes.items())
+    print(f"  prompt-sens  : {diag['analyzed_trials']}/{diag['discovered_trials']} "
+          f"trials re-judged; mean |score Δ| by axis: {delta or 'n/a'}")
+    return diag
+
+
 # ─── main ───────────────────────────────────────────────────────────
 
 
@@ -211,6 +232,8 @@ def run(
     add_fable_5: bool = False,
     judge_method: str = "panel",
     surgicalness_threshold: float = 0.30,
+    prompt_sensitivity: int = 0,
+    prompt_sensitivity_judge: str | None = None,
 ) -> int:
     """Build the metrics summary JSON from a runs/<run-id>/ directory.
 
@@ -275,6 +298,13 @@ def run(
         "verbosity_turn1": verbosity,
         "surgicalness": surgicalness,
     }
+
+    if prompt_sensitivity:
+        data["prompt_sensitivity"] = _run_prompt_sensitivity(
+            runs_dir,
+            judge_model=prompt_sensitivity_judge or "openai/gpt-5.4-mini",
+            sample=prompt_sensitivity,
+        )
 
     out_path = Path(out)
     if out_path.parent != Path(""):
@@ -351,6 +381,21 @@ def main() -> int:
             "path that reads from trajectories/*/grade.json."
         ),
     )
+    ap.add_argument(
+        "--prompt-sensitivity", type=int, default=0, metavar="N",
+        help=(
+            "Opt-in judge prompt-design sensitivity diagnostic (adapted "
+            "from VeyraBench, arXiv:2607.19257): re-judge up to N sampled "
+            "cached trials under format / instruction-count / "
+            "context-length perturbations of the canonical judge prompt "
+            "and emit per-axis adherence-delta diagnostics. 0 = off."
+        ),
+    )
+    ap.add_argument(
+        "--prompt-sensitivity-judge", default=None,
+        help="LiteLLM model string for the sensitivity re-judging "
+        "(default: openai/gpt-5.4-mini).",
+    )
     args = ap.parse_args()
     return run(
         runs=args.runs,
@@ -359,6 +404,8 @@ def main() -> int:
         add_fable_5=args.add_fable_5,
         judge_method=args.judge_method,
         surgicalness_threshold=args.surgicalness_threshold,
+        prompt_sensitivity=args.prompt_sensitivity,
+        prompt_sensitivity_judge=args.prompt_sensitivity_judge,
     )
 
 

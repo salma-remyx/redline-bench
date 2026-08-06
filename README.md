@@ -207,3 +207,38 @@ chokepoint, whose sole caller is `redlinebench-rejudge`. The judge panel
 (majority vote over stored grades, no LLM call) and the in-container Harbor
 verifier (a vendored copy of the judging logic) are not covered by this
 hook.
+
+## Judge prompt-design sensitivity
+
+VeyraBench (*Prompt Design at Scale*, arXiv:2607.19257) shows that three
+prompt-design decisions — instruction **format** (markdown / plain text /
+prose / tabular), **instruction count**, and **context length** — move LLM
+instruction adherence by amounts practitioners rarely measure. RedlineBench's
+judge is itself an instruction-following LLM, so those same decisions shape its
+verdicts: a judge whose grades flip when the system prompt is reformatted or the
+document is trimmed is a fragile judge.
+
+`metrics_summary` can quantify that fragility. `--prompt-sensitivity N`
+re-judges up to `N` sampled cached trials (those with a
+`verifier/annotated_view.md` alongside `grade.json`) through the shared
+`judging.call_judge` chokepoint, perturbing the canonical
+`JUDGE_SYSTEM_PROMPT` across all three axes, and writes per-axis
+adherence-delta diagnostics into the summary's `prompt_sensitivity` field: the
+mean absolute change in weighted score and the mean verdict-flip rate under
+format, instruction-count, and context-length perturbations. Unset (the
+default), the metrics path is unchanged.
+
+```bash
+python -m metrics_summary --runs runs/reproduce \
+    --judge-method single --prompt-sensitivity 16 \
+    [--prompt-sensitivity-judge openai/gpt-5.4-mini]
+```
+
+This extends the judge-reliability / audit-trail thread: the audit trail makes
+verdict-fragility regressions debuggable after the fact, and this diagnostic
+measures one source of that fragility (prompt design) up front. It is a Mode-2
+adapted port — the controlled format × instruction-count × context-length sweep
+is kept at full fidelity, while VeyraBench's synthetic corpus, 5-model panel,
+generatable rule ladder, and separate harness are substituted with the repo's
+own cached trials, configured judge, the judge prompt's fixed instruction set,
+and this opt-in diagnostic respectively.
