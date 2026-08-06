@@ -94,7 +94,14 @@ observed_landing_zones:
       via reproduce.main() at src/reproduce.py:207 in the sta
     branch: vector-bench-can-models-surgically-edit-svg-code
     timestamp: '2026-08-04T16:57:35Z'
-  last_observed: '2026-08-04T16:57:35Z'
+  - arxiv: 2607.19257v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: metrics_summary.run() (via the new _run_prompt_sensitivity
+      helper), reached by the pre-existing python -m metrics_summary CLI and in-process
+      by reproduce.py / the redlinebench-reproduce CLI; triggered
+    branch: prompt-design-at-scale-how-format-instruction-count-and-cont
+    timestamp: '2026-08-06T02:34:05Z'
+  last_observed: '2026-08-06T02:34:05Z'
 rejected_shapes:
 - shape_tag: null
   reason_code: null
@@ -103,4 +110,4 @@ rejected_shapes:
   - arxiv: 2607.19056v1
     timestamp: '2026-08-01T12:49:19Z'
 coordination_signals: []
-last_updated: '2026-08-04T16:57:35Z'
+last_updated: '2026-08-06T02:34:05Z'
