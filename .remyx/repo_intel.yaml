@@ -101,7 +101,14 @@ observed_landing_zones:
       by reproduce.py / the redlinebench-reproduce CLI; triggered
     branch: prompt-design-at-scale-how-format-instruction-count-and-cont
     timestamp: '2026-08-06T02:34:05Z'
-  last_observed: '2026-08-06T02:34:05Z'
+  - arxiv: 2608.06312v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: "metrics_summary.run() \u2014 new call diagnose_error_profile(by_model)\
+      \ at src/metrics_summary.py:265; reached via reproduce.py:207 (the redlinebench-reproduce\
+      \ CLI entry point registered in pyproject.toml)"
+    branch: benchmarking-and-enhancing-llms-for-rule-intensive-review-of
+    timestamp: '2026-08-08T05:49:19Z'
+  last_observed: '2026-08-08T05:49:19Z'
 rejected_shapes:
 - shape_tag: null
   reason_code: null
@@ -110,4 +117,4 @@ rejected_shapes:
   - arxiv: 2607.19056v1
     timestamp: '2026-08-01T12:49:19Z'
 coordination_signals: []
-last_updated: '2026-08-06T02:34:05Z'
+last_updated: '2026-08-08T05:49:19Z'
