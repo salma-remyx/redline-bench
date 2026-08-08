@@ -207,3 +207,27 @@ chokepoint, whose sole caller is `redlinebench-rejudge`. The judge panel
 (majority vote over stored grades, no LLM call) and the in-container Harbor
 verifier (a vendored copy of the judging logic) are not covered by this
 hook.
+
+### Auditing the benchmark itself for defects
+
+`ok-but-unparseable` is a *mechanical* defect (the verifier's own output
+format broke). Most score suppression is subtler: defects that need domain
+knowledge to spot and that wrongly reject correct redlines — the class
+*SciCode-Verified* (arXiv:2608.04975) found dominates benchmark error.
+`defect_audit` extends the audit thread to that content-level class,
+sweeping the same `judge_calls` trail for verifier/benchmark defects and
+the verdict flips they imply:
+
+```bash
+python -m defect_audit --db ./judge_audit.sqlite3
+# defect audit: 7 defect(s) across 4 task(s) (1 parse-mismatch, 6 contradictory-spec), 4 flip candidate(s) — 3 wrongly-rejected redline(s) would re-pass
+```
+
+It classifies two defect types — `parse_mismatch` (the mechanical class,
+re-exposed inside the taxonomy) and `contradictory_spec` (a rubric the
+panel splits PASS/FAIL on, the parameter-free proxy for a self-contradictory
+or over-tight specification) — and reports the verdict-flip candidates a
+corrected benchmark would re-grade, with a verdict-space recovery estimate.
+Pass `--json` for the full per-rubric defect + flip report. This is the
+content-level extension of the audit-trail scaffold — adapted from
+*SciCode-Verified* (arXiv:2608.04975).
