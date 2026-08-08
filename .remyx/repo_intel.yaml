@@ -108,7 +108,12 @@ observed_landing_zones:
       \ CLI entry point registered in pyproject.toml)"
     branch: benchmarking-and-enhancing-llms-for-rule-intensive-review-of
     timestamp: '2026-08-08T05:49:19Z'
-  last_observed: '2026-08-08T05:49:19Z'
+  - arxiv: 2608.04975v1
+    mode: ''
+    call_site_specifics: ''
+    branch: scicode-verified-how-benchmark-defects-underestimated-the-sc
+    timestamp: '2026-08-08T23:45:15Z'
+  last_observed: '2026-08-08T23:45:15Z'
 rejected_shapes:
 - shape_tag: null
   reason_code: null
@@ -117,4 +122,4 @@ rejected_shapes:
   - arxiv: 2607.19056v1
     timestamp: '2026-08-01T12:49:19Z'
 coordination_signals: []
-last_updated: '2026-08-08T05:49:19Z'
+last_updated: '2026-08-08T23:45:15Z'
