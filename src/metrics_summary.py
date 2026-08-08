@@ -50,6 +50,7 @@ from docx_metrics import (
     find_model_docx_paths,
     turn_of,
 )
+from error_taxonomy import diagnose_error_profile
 from panel_reader import collect_panel_rows
 from runs_reader import (
     best_at_k_rows,
@@ -257,6 +258,12 @@ def run(
     leaderboard = build_leaderboard(by_model)
     models = [r["model"] for r in leaderboard]
 
+    # ── diagnosis-oriented error profile (per model) ─────────────
+    # Decompose the per-rubric FAIL verdicts already on the rows into a
+    # (evaluation-dimension → error-type) hierarchy + task coverage, so
+    # the summary shows *where* each model is weak, not just how weak.
+    error_profile = diagnose_error_profile(by_model)
+
     # ── docx-driven metrics (verbosity + surgicalness) ────────────
     verbosity, surgicalness = _build_docx_metrics(
         runs_dir, benchmark_dir,
@@ -274,6 +281,7 @@ def run(
         "leaderboard": leaderboard,
         "verbosity_turn1": verbosity,
         "surgicalness": surgicalness,
+        "error_profile": error_profile,
     }
 
     out_path = Path(out)
@@ -297,6 +305,14 @@ def run(
             f"{r['overall_turn_weighted']:>10.4f} "
             f"{r['best_at_k_turn_weighted']:>10.4f} "
             f"  [{ci[0]:.4f}, {ci[1]:.4f}]"
+        )
+    print()
+    for model in models:
+        mp = error_profile["by_model"].get(model, {})
+        print(
+            f"  {model:<28} errors={mp.get('n_errors', 0):<4} "
+            f"coverage_clean={mp.get('task_coverage_clean', 0.0):.4f} "
+            f"dominant={mp.get('dominant_error_type', '-')}"
         )
     return 0
 

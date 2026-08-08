@@ -207,3 +207,34 @@ chokepoint, whose sole caller is `redlinebench-rejudge`. The judge panel
 (majority vote over stored grades, no LLM call) and the in-container Harbor
 verifier (a vendored copy of the judging logic) are not covered by this
 hook.
+
+## Diagnosis-oriented error profile
+
+The metrics summary (`metrics_summary.run`, written to
+`metrics_summary.json` and emitted by `redlinebench-reproduce`) carries an
+`error_profile` block that decomposes each model's per-rubric FAIL
+verdicts into a two-level error taxonomy, so the summary shows *where* a
+model is weak rather than only how weak it is overall:
+
+- **dimension** — the benchmark's five evaluation dimensions (read from
+  each rubric's `category`), and
+- **error_type** — a parameter-free keyword classifier over the rubric's
+  `criteria` text (the rule that was checked), mapping to a legal-concept
+  failure mode. Penalty rubrics the model *triggered* (PASS on a
+  negative-weight rubric — an edit the attorney flagged as undesirable)
+  are diagnosed directly as `over_aggression`, since the penalty itself
+  is the diagnosis.
+
+Each model gets counts + weighted severity per dimension and error type,
+the dominant dimension/type, a `dimension::error_type` leaf hierarchy, and
+a `task_coverage_clean` rate (share of tasks with zero diagnosed errors);
+an `overall` block pools across models to show where the field is weak.
+
+This is the diagnosis-oriented *evaluation* half — adapted from
+*Benchmarking and Enhancing LLMs for Rule-Intensive Review of National
+Standard Documents* (arXiv:2608.06312), which introduces a hierarchical
+review-error taxonomy and a diagnosis-oriented evaluation protocol. The
+paper's GB/T-Reviewer multi-agent framework, its counterexample-generation
+pipeline, and its national-standard-specific schema are out of scope:
+RedlineBench already has its multi-judge panel, rubric set, and on-disk
+verdicts, so this consumes those verdicts rather than re-deriving them.
