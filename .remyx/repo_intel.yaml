@@ -113,7 +113,14 @@ observed_landing_zones:
     call_site_specifics: ''
     branch: scicode-verified-how-benchmark-defects-underestimated-the-sc
     timestamp: '2026-08-08T23:45:15Z'
-  last_observed: '2026-08-08T23:45:15Z'
+  - arxiv: 2607.29252v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: panel.main (the redlinebench-panel console script). rubric_measurability
+      is imported at module load and called inside main() during the per-rubric majority-vote
+      pass; per-rubric votes are pooled in th
+    branch: calibratedrubric-task-adaptive-rubric-banks-for-open-ended-l
+    timestamp: '2026-08-09T17:18:09Z'
+  last_observed: '2026-08-09T17:18:09Z'
 rejected_shapes:
 - shape_tag: null
   reason_code: null
@@ -122,4 +129,4 @@ rejected_shapes:
   - arxiv: 2607.19056v1
     timestamp: '2026-08-01T12:49:19Z'
 coordination_signals: []
-last_updated: '2026-08-08T23:45:15Z'
+last_updated: '2026-08-09T17:18:09Z'
