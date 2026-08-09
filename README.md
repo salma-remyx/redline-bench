@@ -129,6 +129,8 @@ Harbor supports many [agents](https://www.harborframework.com/docs/agents) (`cod
 
 **Benchmark level**: per-task scores are first **averaged within each input group**, then aggregated as the mean over groups, overall and broken out per turn, per side, and per scenario. **Judging** uses a 3-judge panel (`gpt-5.4-mini` + `claude-haiku-4-5` + `gemini-3.1-flash-lite`, intentionally outside the families of benchmarked models) with strict-majority vote per rubric.
 
+The panel summary additionally reports a per-rubric **measurability** score: a Beta–Bernoulli agreement posterior pooled across the panel that flags rubrics where the judges fail to reach a stable verdict (the candidates to revisit when consensus is fragile). See `rubric_measurability` and the `--measurability-threshold` flag on `redlinebench-panel`.
+
 Every rubric criterion maps to one of five evaluation dimensions. Their share of all rubrics across the benchmark:
 
 | Dimension                          | Share of rubrics | What it penalizes                                                                                            |
@@ -151,7 +153,8 @@ The reference models run through this pipeline are GPT-5.5, Claude Opus 4.8, Gem
 
 ```
 src/             # flat Python modules: reproduce, metrics_summary, aggregate, panel, rejudge,
-                 #   runs_reader, panel_reader, docx_metrics, judging, dataset
+                 #   runs_reader, panel_reader, docx_metrics, judging, dataset,
+                 #   rubric_measurability
 schemas/         # task / prediction / grade JSON schemas
 skills/          # the canonical contract-redliner skill
 docs/            # guide, benchmark design, and evaluation notes

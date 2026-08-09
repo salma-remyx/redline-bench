@@ -34,6 +34,8 @@ from itertools import combinations
 from pathlib import Path
 from statistics import mean
 
+import rubric_measurability
+
 _NAME_RE = re.compile(r"redline-s(\d+)-t(\d+)-g(\d+)([a-z])")
 
 
@@ -145,6 +147,13 @@ def main() -> int:
                     help="optional label=path for the reference judge (e.g. gpt-5.5 from rollout grades) "
                          "— compared against the panel but NOT part of the vote")
     ap.add_argument("--out", default="results/panel")
+    ap.add_argument(
+        "--measurability-threshold",
+        type=float,
+        default=rubric_measurability.DEFAULT_MEASURABILITY_THRESHOLD,
+        help="Beta-Bernoulli measurability score below which a pooled rubric is "
+             "flagged low-measurability (default %(default)s; 0.5 is chance)",
+    )
     args = ap.parse_args()
 
     judges = {}
@@ -173,6 +182,9 @@ def main() -> int:
 
     # --- panel: rubric-level majority vote ---
     panel_pmg = defaultdict(dict)    # model -> {group: score}
+    # rubric_id -> [n_pass, n_fail] pooled across every judge/model/task;
+    # feeds the Beta-Bernoulli measurability posterior below.
+    pooled_votes: dict[str, list[int]] = defaultdict(lambda: [0, 0])
     by_mt = defaultdict(list)
     for (model, task) in common:
         by_mt[(model, _input_group(task))].append((model, task))
@@ -182,8 +194,24 @@ def main() -> int:
             rubric_sets = [_rubric_rows(judges[label][(m, task)]) for label in judges]
             panel_verdicts, weights = majority_vote_per_rubric(rubric_sets)
             task_scores.append(weighted_score(panel_verdicts, weights))
+            for rs in rubric_sets:
+                for rid, row in rs.items():
+                    bucket = pooled_votes[rid]
+                    if row[0] == "PASS":
+                        bucket[0] += 1
+                    else:
+                        bucket[1] += 1
         panel_pmg[model][group] = mean(task_scores)
     panel_leaderboard = _leaderboard(panel_pmg)
+
+    # --- rubric measurability (CalibratedRubric Beta-Bernoulli posterior) ---
+    # A principled, uncertainty-aware successor to the pairwise
+    # judge_agreement rate: low-measurability rubrics are where the panel
+    # fails to reach a stable verdict.
+    meas_per_rubric, meas_summary = rubric_measurability.pooled_measurability(
+        {rid: (v[0], v[1]) for rid, v in pooled_votes.items()},
+        threshold=args.measurability_threshold,
+    )
 
     # --- judge agreement (pairwise rubric-level) ---
     agreement = {}
@@ -223,6 +251,8 @@ def main() -> int:
         "sensitivity_rankings": {lbl: ranked(lb) for lbl, lb in sensitivity.items()},
         "judge_agreement": agreement,
         "ranking_stable_across_judges": len({tuple(ranked(lb)) for lb in sensitivity.values()}) == 1,
+        "rubric_measurability": meas_summary,
+        "rubric_measurability_per_rubric": meas_per_rubric,
     }
     if reference:
         summary["reference_judge"] = reference
@@ -251,6 +281,11 @@ def main() -> int:
         print(f"panel matches reference ({reference['label']}) ranking: "
               f"{summary['panel_matches_reference_ranking']}")
     print(f"judge agreement: {agreement}")
+    print(
+        f"rubric measurability: {meas_summary['n_measurable']}/{meas_summary['n_rubrics']} "
+        f"measurable (mean {meas_summary['mean_measurability']}); "
+        f"low: {meas_summary['low_measurability_rubrics']}"
+    )
     return 0
 
 
