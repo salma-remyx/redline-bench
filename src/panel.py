@@ -34,6 +34,8 @@ from itertools import combinations
 from pathlib import Path
 from statistics import mean
 
+import pivotal_votes
+
 _NAME_RE = re.compile(r"redline-s(\d+)-t(\d+)-g(\d+)([a-z])")
 
 
@@ -176,12 +178,21 @@ def main() -> int:
     by_mt = defaultdict(list)
     for (model, task) in common:
         by_mt[(model, _input_group(task))].append((model, task))
+    # Pivotal-vote rollup (arXiv:2608.06940v1 affected-set): how many
+    # rubrics sit on a one-vote margin and thus hinge on an extra ballot
+    # / verifier pass. Tallied alongside the vote so the per-rubric
+    # inputs aren't re-read.
+    pivotal_tally = pivotal_votes.PivotalTally()
+    pivotal_per_model = defaultdict(pivotal_votes.PivotalTally)
     for (model, group), keys in by_mt.items():
         task_scores = []
         for (m, task) in keys:
             rubric_sets = [_rubric_rows(judges[label][(m, task)]) for label in judges]
             panel_verdicts, weights = majority_vote_per_rubric(rubric_sets)
             task_scores.append(weighted_score(panel_verdicts, weights))
+            pstats = pivotal_votes.pivotal_task_stats(rubric_sets, weights)
+            pivotal_tally.add(pstats)
+            pivotal_per_model[m].add(pstats)
         panel_pmg[model][group] = mean(task_scores)
     panel_leaderboard = _leaderboard(panel_pmg)
 
@@ -223,6 +234,11 @@ def main() -> int:
         "sensitivity_rankings": {lbl: ranked(lb) for lbl, lb in sensitivity.items()},
         "judge_agreement": agreement,
         "ranking_stable_across_judges": len({tuple(ranked(lb)) for lb in sensitivity.values()}) == 1,
+        "pivotal_votes": {
+            "overall": pivotal_tally.summary(),
+            "per_model": {m: pivotal_per_model[m].summary()
+                          for m in sorted(pivotal_per_model)},
+        },
     }
     if reference:
         summary["reference_judge"] = reference
@@ -251,6 +267,11 @@ def main() -> int:
         print(f"panel matches reference ({reference['label']}) ranking: "
               f"{summary['panel_matches_reference_ranking']}")
     print(f"judge agreement: {agreement}")
+    pv = summary["pivotal_votes"]["overall"]
+    print(f"pivotal rubrics (1-vote margin): {pv['n_pivotal']}/{pv['n_rubrics']} "
+          f"— a verifier / 4th-judge pass would touch "
+          f"{pv['verification_invocation_rate']:.1%} of rubrics "
+          f"({pv['pivotal_weight_share']:.1%} of score weight hinging)")
     return 0
 
 

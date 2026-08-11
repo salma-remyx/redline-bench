@@ -52,6 +52,7 @@ from pathlib import Path
 
 from aggregate import DIAG_KEYS
 from panel import majority_vote_per_rubric, weighted_score
+import pivotal_votes
 
 # Same regex `runs_reader._TASK_NAME_RE` uses — verdict filenames are
 # `<task>.json` so the stem matches the task name directly.
@@ -270,6 +271,18 @@ def collect_panel_rows(
 
         reward = round(weighted_score(panel_verdicts, weights), 4)
 
+        # Pivotal-rubric tag (arXiv:2608.06940v1 affected-set): which of
+        # this task's rubrics a single extra ballot could flip, the share
+        # of the score hinging on them, and the worst-case score swing.
+        # Computed from the voted rubric set; unscored rubrics are
+        # unanimous-FAIL by default (margin = n_voters) so never pivotal.
+        # Private key — mirrors `_per_rubric`: downstream metrics may read
+        # it, but the row schema otherwise ignores it.
+        pivotal = pivotal_votes.pivotal_task_stats(rubric_sets, weights)
+        pivotal["score_swing"] = pivotal_votes.pivotal_score_swing(
+            panel_verdicts, weights, rubric_sets,
+        )
+
         # Per-rubric counters for the row schema.
         n_total = len(majority_per_rubric)
         n_pass = sum(1 for r in majority_per_rubric if r["verdict"] == "PASS")
@@ -337,6 +350,7 @@ def collect_panel_rows(
             "model_dir": model_dir,
             "trial": 1,
             "_per_rubric": majority_per_rubric,
+            "_pivotal": pivotal,
         })
 
     return rows
