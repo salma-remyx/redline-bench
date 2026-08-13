@@ -127,7 +127,14 @@ observed_landing_zones:
       \ from panel_reader.collect_panel_rows(), itself invoked by metrics_su"
     branch: blind-to-the-pivotal-vote-aggregate-independence-metrics-mis
     timestamp: '2026-08-11T03:14:47Z'
-  last_observed: '2026-08-11T03:14:47Z'
+  - arxiv: 2608.04714v1
+    mode: Mode 3 (inspired experiment)
+    call_site_specifics: "Two pre-existing console-script entry points: `redlinebench-reproduce`\
+      \ (reproduce.main \u2192 metrics_summary.run \u2192 benchmark_disclosure) and\
+      \ `redlinebench-rejudge` (rejudge.main \u2192 judging.call_judge \u2192 jud"
+    branch: what-we-observe-as-llm-behavior-can-be-a-side-effect-of-infe
+    timestamp: '2026-08-13T15:28:07Z'
+  last_observed: '2026-08-13T15:28:07Z'
 rejected_shapes:
 - shape_tag: null
   reason_code: null
@@ -136,4 +143,4 @@ rejected_shapes:
   - arxiv: 2607.19056v1
     timestamp: '2026-08-01T12:49:19Z'
 coordination_signals: []
-last_updated: '2026-08-11T03:14:47Z'
+last_updated: '2026-08-13T15:28:07Z'
