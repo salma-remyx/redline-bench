@@ -33,6 +33,8 @@ import os
 import sqlite3
 import time
 
+import inference_provenance
+
 #: Environment variable holding the audit-DB path. Unset => auditing off.
 AUDIT_DB_ENV = "REDBENCH_JUDGE_AUDIT_DB"
 
@@ -46,14 +48,33 @@ CREATE TABLE IF NOT EXISTS judge_calls (
     attempts INTEGER,
     latency_ms REAL,
     ok INTEGER NOT NULL,
-    error TEXT
+    error TEXT,
+    backend TEXT,
+    backend_version TEXT
 );
 """
+
+#: Columns added after the original schema. ``CREATE TABLE IF NOT EXISTS``
+#: won't add them to a DB created by an older release, so ``_migrate`` does
+#: it via ``ALTER TABLE``. Each is the per-call backend disclosure
+#: (arXiv:2608.04714): which inference framework + version produced the
+#: verdict on this row.
+_ADDED_COLUMNS = ("backend", "backend_version")
 
 
 def audit_path() -> str | None:
     """Return the configured audit-DB path, or ``None`` when auditing is off."""
     return os.environ.get(AUDIT_DB_ENV) or None
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Add backend-disclosure columns to judge-call tables created before
+    they existed. Idempotent: only adds columns that are genuinely missing."""
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(judge_calls)")}
+    for col in _ADDED_COLUMNS:
+        if col not in existing:
+            conn.execute(f"ALTER TABLE judge_calls ADD COLUMN {col} TEXT")
+    conn.commit()
 
 
 def _connect() -> sqlite3.Connection | None:
@@ -62,6 +83,7 @@ def _connect() -> sqlite3.Connection | None:
         return None
     conn = sqlite3.connect(path)
     conn.execute(_SCHEMA)
+    _migrate(conn)
     conn.commit()
     return conn
 
@@ -85,12 +107,16 @@ def log_judge_call(
     conn = _connect()
     if conn is None:
         return
+    # Stamp the inference-backend disclosure (arXiv:2608.04714) onto the
+    # row: which framework + version produced this verdict. Best-effort,
+    # like the rest of the audit write.
+    provenance = inference_provenance.judge_call_backend()
     try:
         conn.execute(
             "INSERT INTO judge_calls "
             "(ts, model, system_prompt, user_prompt, raw_response, "
-            " attempts, latency_ms, ok, error) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            " attempts, latency_ms, ok, error, backend, backend_version) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 time.time(),
                 model,
@@ -101,6 +127,8 @@ def log_judge_call(
                 latency_ms,
                 1 if ok else 0,
                 error,
+                provenance["backend"],
+                provenance["backend_version"],
             ),
         )
         conn.commit()

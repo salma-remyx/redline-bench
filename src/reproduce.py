@@ -207,6 +207,10 @@ def main() -> int:
     rc = metrics_summary.run(
         runs=runs_dir, out=args.out, benchmark_dir=benchmark,
         judge_method="panel",
+        # Stamp the model-under-test's inference backend (Harbor agent
+        # harness + provider/model + env) onto the summary's provenance
+        # block — arXiv:2608.04714: benchmark scores are not backend-agnostic.
+        agent=args.agent, agent_model=args.model, harbor_env=args.env,
     )
     if rc != 0:
         return rc

@@ -50,6 +50,7 @@ from docx_metrics import (
     find_model_docx_paths,
     turn_of,
 )
+from inference_provenance import benchmark_disclosure
 from panel_reader import collect_panel_rows
 from runs_reader import (
     best_at_k_rows,
@@ -211,6 +212,9 @@ def run(
     add_fable_5: bool = False,
     judge_method: str = "panel",
     surgicalness_threshold: float = 0.30,
+    agent: str | None = None,
+    agent_model: str | None = None,
+    harbor_env: str | None = None,
 ) -> int:
     """Build the metrics summary JSON from a runs/<run-id>/ directory.
 
@@ -219,6 +223,13 @@ def run(
     resolved via `dataset.get_benchmark_dir()` (local ./benchmark,
     $REDLINEBENCH_BENCHMARK_DIR, or a HuggingFace download). Callable
     in-process (e.g. from `reproduce.py`) without spawning a subprocess.
+
+    `agent` / `agent_model` / `harbor_env` carry the model-under-test's
+    inference backend (the Harbor agent harness) when known — populated by
+    `reproduce`, left None when the summary is built standalone. They are
+    stamped onto an `inference_provenance` block so the benchmark output
+    discloses the backend / version / generation config behind the scores
+    (arXiv:2608.04714: benchmark numbers are not backend-agnostic).
     """
     runs_dir = Path(runs).resolve()
     if not runs_dir.is_dir():
@@ -264,6 +275,15 @@ def run(
         inline_block_threshold=surgicalness_threshold,
     )
 
+    # ── inference-backend provenance ─────────────────────────────
+    # Disclose the backend / version / generation config behind these
+    # scores (arXiv:2608.04714). Always carries the judge backend; the
+    # agent-harness half is populated when run via `reproduce`.
+    provenance = benchmark_disclosure(
+        judge_method=judge_method,
+        agent=agent, agent_model=agent_model, harbor_env=harbor_env,
+    )
+
     data = {
         "n_trials": len(trials),
         "n_models": len(by_model),
@@ -271,6 +291,7 @@ def run(
         "include_fable_5": bool(add_fable_5),
         "judge_method": judge_method,
         "surgicalness_threshold": surgicalness_threshold,
+        "inference_provenance": provenance,
         "leaderboard": leaderboard,
         "verbosity_turn1": verbosity,
         "surgicalness": surgicalness,
@@ -288,6 +309,10 @@ def run(
     print(f"  fable-5      : {'included' if add_fable_5 else 'excluded'}")
     print(f"  judge method : {judge_method}"
           f"{' (gpt-5.4-mini + claude-haiku + gemini-3.1-flash-lite, majority vote)' if judge_method == 'panel' else ' (gpt-5.5)'}")
+    judge_be = provenance["judge"]
+    ver = judge_be["backend_version"] or "(version unknown)"
+    det = "deterministic" if judge_be["deterministic"] else "NOT deterministic"
+    print(f"  judge backend: {judge_be['backend']} {ver} — {det}")
     print()
     print(f"  {'model':<28} {'turn_wgt':>10} {'best@k':>10} {'CI':>22}")
     for r in leaderboard:

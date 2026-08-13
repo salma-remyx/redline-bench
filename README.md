@@ -207,3 +207,43 @@ chokepoint, whose sole caller is `redlinebench-rejudge`. The judge panel
 (majority vote over stored grades, no LLM call) and the in-container Harbor
 verifier (a vendored copy of the judging logic) are not covered by this
 hook.
+
+## Inference-backend disclosure
+
+Benchmark scores are reported as properties of a model, but the inference
+framework behind them is not: a full re-run is non-deterministic (agent
+sampling + LLM judges), and a non-trivial share of that variance comes
+from the backend and its default generation parameters rather than the
+model itself. *What We Observe as LLM Behavior Can Be a Side-effect of
+Inference Backend* (arXiv:2608.04714) measures this directly — even under
+greedy, sampling-noise-free decoding, swapping the inference framework
+moves scores — and prescribes **disclosing the backend, its version, and
+the full generation configuration**, plus deterministic decoding for
+cross-backend comparison.
+
+`metrics_summary.json` now carries an `inference_provenance` block that
+does exactly this for the two inference surfaces in the harness:
+
+- **judge path** — the LiteLLM wrapper behind `judging.call_judge`, its
+  installed version, the judge decoding config, and a `deterministic`
+  flag (currently `false`: temperature is intentionally unset because
+  reasoning judge models reject it, so each backend's default applies).
+- **agent harness** — when built via `redlinebench-reproduce`, the Harbor
+  agent, provider/model, and environment that ran the model-under-test.
+
+```json
+"inference_provenance": {
+  "judge": {
+    "backend": "litellm", "backend_version": "1.96.2",
+    "generation_config": {"temperature": null, "seed": null, "response_format": "json_object", "...": "..."},
+    "deterministic": false
+  },
+  "agent_harness": {"harness": "harbor", "agent": "claude-code", "provider": "anthropic", "env": "modal"}
+}
+```
+
+The per-call backend + version is also stamped onto each row of the
+opt-in [judge-call audit trail](#judge-call-audit-trail) (`backend`,
+`backend_version` columns), so a recorded verdict stays traceable to the
+framework that produced it. This is the disclosure half of the
+backend-provenance record adapted from arXiv:2608.04714.
