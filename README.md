@@ -207,3 +207,20 @@ chokepoint, whose sole caller is `redlinebench-rejudge`. The judge panel
 (majority vote over stored grades, no LLM call) and the in-container Harbor
 verifier (a vendored copy of the judging logic) are not covered by this
 hook.
+
+## Disagreement-aware panel consensus
+
+Alongside the canonical strict-majority vote, `redlinebench-panel`
+reports a **dispersion** signal per model: for each rubric the judges'
+verdicts are treated as binary verifier scores, and the quantity
+`|mean(score) − 0.5|` measures how far the rubric sits from the
+panel's decision boundary. A low mean dispersion means the majority
+verdicts are one judge's opinion away from flipping — exactly the
+instability VERDICT's coupled-scoring equilibrium predicts — while a
+high dispersion means the panel is decisive. The signal lands in
+`panel_summary.json` under `disagreement_consensus` (per-model
+`mean_dispersion` + `verdict_pass_fraction`) and is printed at the end
+of the run. It is diagnostic only: the majority vote and the official
+leaderboard are unchanged. Adapted from *VERDICT: Training-Free
+Step-Wise Verification of Multimodal Reasoning via Disagreement-Aware
+Consensus* (arXiv:2608.10665).

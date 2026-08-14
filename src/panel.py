@@ -34,6 +34,8 @@ from itertools import combinations
 from pathlib import Path
 from statistics import mean
 
+from disagreement_consensus import summarize_panel_consensus
+
 _NAME_RE = re.compile(r"redline-s(\d+)-t(\d+)-g(\d+)([a-z])")
 
 
@@ -197,6 +199,10 @@ def main() -> int:
                     agree += 1
         agreement[f"{a} vs {b}"] = round(agree / total, 4) if total else None
 
+    # --- disagreement-aware consensus (VERDICT-style dispersion) ---
+    # Diagnostic only — the strict-majority vote above stays canonical.
+    consensus = summarize_panel_consensus(judges, _rubric_rows)
+
     # --- reference-judge comparison (optional, not part of vote) ---
     reference = None
     if args.reference:
@@ -222,6 +228,7 @@ def main() -> int:
         "sensitivity_per_judge": sensitivity,
         "sensitivity_rankings": {lbl: ranked(lb) for lbl, lb in sensitivity.items()},
         "judge_agreement": agreement,
+        "disagreement_consensus": consensus,
         "ranking_stable_across_judges": len({tuple(ranked(lb)) for lb in sensitivity.values()}) == 1,
     }
     if reference:
@@ -251,6 +258,8 @@ def main() -> int:
         print(f"panel matches reference ({reference['label']}) ranking: "
               f"{summary['panel_matches_reference_ranking']}")
     print(f"judge agreement: {agreement}")
+    print(f"disagreement-aware consensus (mean dispersion per model): "
+          f"{{m: s['mean_dispersion'] for m, s in consensus.items()}}")
     return 0
 
 
