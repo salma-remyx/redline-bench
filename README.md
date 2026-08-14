@@ -207,3 +207,86 @@ chokepoint, whose sole caller is `redlinebench-rejudge`. The judge panel
 (majority vote over stored grades, no LLM call) and the in-container Harbor
 verifier (a vendored copy of the judging logic) are not covered by this
 hook.
+
+## Action-graded severity
+
+The rubric score reduces every criterion to one PASS/FAIL bit, so a model
+that omits a critical indemnity clause and a model that fumbles a
+formatting detail both register as one identical "FAIL". The
+**severity** metric (`src/severity.py`) grades *how wrong* each failure is
+on a fixed L0–L4 ordinal scale, reading only the per-rubric records
+`judging.aggregate()` already emits. It is computed automatically by
+`metrics_summary` and written to the `severity` key of
+`metrics_summary.json` (and printed as a one-line console summary),
+alongside — not in place of — the binary score.
+
+| Level | Name               | Gate                                                                            |
+| ----- | ------------------ | ------------------------------------------------------------------------------- |
+| L0    | no-harm            | Rubric passed, or a penalty rubric correctly avoided                             |
+| L1    | cosmetic           | Miss on a low-importance rubric (\|weight\| ≤ 2)                                 |
+| L2    | minor-ambiguity    | Miss on a moderate-importance rubric (\|weight\| 3–5)                            |
+| L3    | substantive        | Miss on a high-importance rubric (\|weight\| 6–7), or an undesirable edit on a low/moderate penalty |
+| L4    | critical           | Critical-clause omission (\|weight\| ≥ 8), or a serious undesirable edit (penalty \|weight\| ≥ 6) |
+
+The headline field is `high_severity_failures`: how many FAILs grade L3+
+(substantive or critical) — failures indistinguishable from cosmetic ones
+under a raw pass-rate. This is the severity instrument adapted from
+*Beyond Attack-Success Rate: Action-Graded Severity Scale for Tool-Using
+AI Agents* (arXiv:2607.07474), re-pointed at redlining: the paper's
+deterministic oracle over typed action records becomes a deterministic
+oracle over per-rubric records, with the importance `weight`, penalty
+flag, and category standing in for the paper's reversible / cross-scope /
+privilege gates.
+
+The paper's second instrument — an LLM judge panel that regrades
+failures from a tag-free account, so it's blind to the oracle's inputs —
+ships as an opt-in on top (§below). Oracle↔panel agreement is reported
+as Krippendorff's alpha (ordinal) so a weak oracle mapping is
+distinguishable from a strong one against an independent grader.
+
+### Severity-judge panel (oracle↔panel agreement)
+
+The follow-up instrument from the same paper is now available as an
+opt-in: `metrics_summary --severity-panel` sends every rubric failure
+the deterministic oracle grades L1+ to a panel of LLM severity judges
+(`src/severity_panel.py`). Each judge reads a **tag-free account** of
+the failure — criterion, legal dimension, and outcome text only, with
+the importance `weight` and penalty flag withheld — so the panel is
+blind to the oracle's inputs, then grades it on the same L0–L4 scale.
+The per-record panel grade is the high median of the judges' levels
+(the ordinal analog of the binary panel's majority vote, breaking ties
+toward higher severity), and oracle↔panel agreement is reported as
+**Krippendorff's alpha (ordinal)** — the paper's headline reliability
+statistic (α = 0.91 on AgentDojo) — in the `severity_panel` block of
+`metrics_summary.json`, alongside `exact_agreement`,
+`within_one_level`, and `mean_abs_deviation`.
+
+Judges run through the shared `judging.call_judge` chokepoint, so
+severity-judge calls appear in the `REDBENCH_JUDGE_AUDIT_DB` audit
+trail like any other judge call, and the binary PASS/FAIL pipeline is
+untouched. The default lineup mirrors the binary panel
+(`openai/gpt-5.4-mini` + `anthropic/claude-haiku-4-5` +
+`google/gemini-3.1-flash-lite`); override with repeated
+`--severity-judge` flags (use an odd count). It is off by default
+because it spends one judge call per judge per rubric failure.
+
+### Reading the alpha statistic
+
+A low `krippendorff_alpha_ordinal` does **not** directly mean "your
+rubric weights are arbitrary." It's a triangulation signal, and three
+sources of disagreement can drive it down; this instrument does not
+distinguish between them:
+
+1. The **oracle mapping** (rubric metadata → L-level) is miscalibrated
+   for the scenario in question.
+2. The **rubric weights** themselves (importance, penalty flags) are
+   noisy or inconsistent across attorney authors.
+3. The **panel** is weak (small n, one judge dominating,
+   prompt/scale-anchor drift).
+
+Interpret the number as construct-validity evidence, not as a rubric
+audit. For diagnosing which of (1)–(3) applies on a specific run, read
+the per-judge grades and rationales in the audit trail
+(`REDBENCH_JUDGE_AUDIT_DB`). A minimum-n guard is not enforced — small
+failure counts produce unstable alpha; treat values under ~30 judged
+failures as directional rather than as measurements.
