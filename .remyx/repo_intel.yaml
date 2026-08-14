@@ -134,7 +134,14 @@ observed_landing_zones:
       \ `redlinebench-rejudge` (rejudge.main \u2192 judging.call_judge \u2192 jud"
     branch: what-we-observe-as-llm-behavior-can-be-a-side-effect-of-infe
     timestamp: '2026-08-13T15:28:07Z'
-  last_observed: '2026-08-13T15:28:07Z'
+  - arxiv: 2608.10665v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: "src/panel.py main() \u2014 the `redlinebench-panel` CLI\
+      \ entry point (pyproject.toml project.scripts) \u2014 calls summarize_panel_consensus(judges,\
+      \ _rubric_rows) at src/panel.py:204, feeding the existing panel_"
+    branch: verdict-training-free-step-wise-verification-of-multimodal-r
+    timestamp: '2026-08-14T13:14:38Z'
+  last_observed: '2026-08-14T13:14:38Z'
 rejected_shapes:
 - shape_tag: null
   reason_code: null
@@ -143,4 +150,4 @@ rejected_shapes:
   - arxiv: 2607.19056v1
     timestamp: '2026-08-01T12:49:19Z'
 coordination_signals: []
-last_updated: '2026-08-13T15:28:07Z'
+last_updated: '2026-08-14T13:14:38Z'
